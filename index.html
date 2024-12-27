@@ -1,12 +1,9 @@
-Pokaż pełną zawartość zoptymalizowanego kodu
-
-```html
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Betting Analyzer 3.0 🎯</title>
+    <title>Pro Betting Analyzer 4.0 🎯</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -15,6 +12,7 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             --success: #4CAF50;
             --warning: #FFC107;
             --danger: #F44336;
+            --info: #00BCD4;
             --light: #F5F5F5;
             --dark: #212121;
             --shadow: 0 4px 8px rgba(0,0,0,0.12);
@@ -61,6 +59,14 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             box-shadow: var(--shadow);
         }
 
+        .advanced-filters {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
         .form-group {
             margin-bottom: 15px;
         }
@@ -71,6 +77,12 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             border: 2px solid #E0E0E0;
             border-radius: 8px;
             font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
         }
 
         .btn {
@@ -83,6 +95,11 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             background: var(--gradient);
             color: white;
             margin: 5px;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
         }
 
         .analysis-card {
@@ -115,6 +132,21 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             display: inline-block;
         }
 
+        .risk-indicator.risk-low {
+            background: var(--success);
+            color: white;
+        }
+
+        .risk-indicator.risk-medium {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .risk-indicator.risk-high {
+            background: var(--danger);
+            color: white;
+        }
+
         .loading {
             display: none;
             text-align: center;
@@ -129,13 +161,27 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             margin: 10px 0;
             display: none;
         }
+
+        .confidence-meter {
+            height: 8px;
+            background: #E0E0E0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .confidence-level {
+            height: 100%;
+            background: var(--success);
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎯 Pro Betting Analyzer 3.0</h1>
-            <p>Zaawansowany system analizy z wykorzystaniem AI</p>
+            <h1>🎯 Pro Betting Analyzer 4.0</h1>
+            <p>Zaawansowany system analizy z wykorzystaniem AI i uczenia maszynowego</p>
         </div>
 
         <div class="control-panel">
@@ -157,44 +203,110 @@ Pokaż pełną zawartość zoptymalizowanego kodu
             </div>
 
             <div class="form-group">
-                <label><i class="fas fa-shield-alt"></i> Ryzyko:</label>
+                <label><i class="fas fa-shield-alt"></i> Poziom ryzyka:</label>
                 <select id="riskLevel" class="form-control">
-                    <option value="low">Niskie</option>
-                    <option value="medium" selected>Średnie</option>
-                    <option value="high">Wysokie</option>
+                    <option value="low">Niski (pewniaki)</option>
+                    <option value="medium" selected>Średni (zbalansowany)</option>
+                    <option value="high">Wysoki (value betting)</option>
                 </select>
             </div>
         </div>
 
+        <div class="advanced-filters">
+            <h3><i class="fas fa-filter"></i> Filtry zaawansowane</h3>
+            <div class="form-group">
+                <label>Rynki:</label>
+                <select id="marketType" class="form-control" multiple>
+                    <option value="h2h" selected>1X2</option>
+                    <option value="spreads">Handicapy</option>
+                    <option value="totals">Totale</option>
+                    <option value="btts">Obie strzelą</option>
+                    <option value="corners">Rożne</option>
+                    <option value="cards">Kartki</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Minimalna pewność typu:</label>
+                <input type="range" id="minConfidence" class="form-control" min="0" max="100" value="75">
+                <span id="confidenceValue">75%</span>
+            </div>
+
+            <div class="form-group">
+                <label>Uwzględnij czynniki:</label>
+                <div>
+                    <input type="checkbox" id="weatherFactor" checked>
+                    <label for="weatherFactor">Pogoda</label>
+                    
+                    <input type="checkbox" id="injuriesFactor" checked>
+                    <label for="injuriesFactor">Kontuzje</label>
+                    
+                    <input type="checkbox" id="motivationFactor" checked>
+                    <label for="motivationFactor">Motywacja</label>
+                    
+                    <input type="checkbox" id="h2hFactor" checked>
+                    <label for="h2hFactor">Historia H2H</label>
+                </div>
+            </div>
+        </div>
+
         <div style="text-align: center;">
-            <button onclick="performAnalysis()" class="btn">
+            <button onclick="performAdvancedAnalysis()" class="btn">
                 <i class="fas fa-search"></i> Analizuj
+            </button>
+            <button onclick="refreshData()" class="btn">
+                <i class="fas fa-sync"></i> Odśwież dane
             </button>
         </div>
 
         <div id="loading" class="loading">
-            <h3>⌛ Trwa analiza...</h3>
+            <h3>⌛ Trwa zaawansowana analiza...</h3>
+            <p>Analizowanie wzorców, motywacji i czynników dodatkowych...</p>
         </div>
 
         <div id="errorMessage" class="error-message"></div>
 
-        <div id="results" class="analysis-card" style="display:none;">
-            <h2><i class="fas fa-star"></i> Wyniki analizy</h2>
-            <div id="analysisResults"></div>
+        <div id="results" class="analysis-section" style="display:none;">
+            <div class="analysis-card">
+                <h2><i class="fas fa-star"></i> Perełki dnia</h2>
+                <div id="pearlsResults"></div>
+            </div>
+
+            <div class="analysis-card">
+                <h2><i class="fas fa-chart-line"></i> Analiza value betting</h2>
+                <div id="valueBettingResults"></div>
+            </div>
+
+            <div class="analysis-card">
+                <h2><i class="fas fa-exclamation-triangle"></i> Wykryte pułapki bukmacherskie</h2>
+                <div id="trapsResults"></div>
+            </div>
+
+            <div class="analysis-card">
+                <h2><i class="fas fa-chart-bar"></i> Statystyki i predykcje</h2>
+                <div id="statsResults"></div>
+            </div>
         </div>
     </div>
-
     <script>
         const API_KEY = '631900acd2063f2fa684e2257dfa5588';
+        let cachedData = {};
         
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await loadSports();
                 setDefaultDate();
+                initializeEventListeners();
             } catch (error) {
                 showError('Błąd inicjalizacji: ' + error.message);
             }
         });
+
+        function initializeEventListeners() {
+            document.getElementById('minConfidence').addEventListener('input', (e) => {
+                document.getElementById('confidenceValue').textContent = e.target.value + '%';
+            });
+        }
 
         function setDefaultDate() {
             const tomorrow = new Date();
@@ -203,26 +315,31 @@ Pokaż pełną zawartość zoptymalizowanego kodu
         }
 
         async function loadSports() {
-            const response = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${API_KEY}`);
-            if (!response.ok) throw new Error('Błąd pobierania sportów');
-            
-            const sports = await response.json();
-            const sportSelect = document.getElementById('sportType');
-            sportSelect.innerHTML = sports
-                .filter(sport => sport.active)
-                .map(sport => `<option value="${sport.key}">${sport.title}</option>`)
-                .join('');
+            try {
+                const response = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${API_KEY}`);
+                if (!response.ok) throw new Error('Błąd pobierania sportów');
+                
+                const sports = await response.json();
+                const sportSelect = document.getElementById('sportType');
+                sportSelect.innerHTML = sports
+                    .filter(sport => sport.active)
+                    .map(sport => `<option value="${sport.key}">${sport.title}</option>`)
+                    .join('');
+            } catch (error) {
+                throw new Error('Błąd podczas ładowania sportów: ' + error.message);
+            }
         }
 
-        async function performAnalysis() {
+        async function performAdvancedAnalysis() {
             try {
                 const sportType = document.getElementById('sportType').value;
                 if (!sportType) throw new Error('Wybierz sport');
 
                 showLoading(true);
                 const matchData = await fetchMatchData(sportType);
-                const analysis = analyzeData(matchData);
-                displayResults(analysis);
+                const enrichedData = await enrichMatchData(matchData);
+                const analysis = analyzeEnrichedData(enrichedData);
+                displayAdvancedResults(analysis);
             } catch (error) {
                 showError(error.message);
             } finally {
@@ -231,89 +348,29 @@ Pokaż pełną zawartość zoptymalizowanego kodu
         }
 
         async function fetchMatchData(sportType) {
-            const date = document.getElementById('analysisDate').value;
-            const response = await fetch(
-                `https://api.the-odds-api.com/v4/sports/${sportType}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h`
-            );
-            if (!response.ok) throw new Error('Błąd pobierania meczów');
-            
-            const data = await response.json();
-            return data.filter(match => 
-                new Date(match.commence_time).toISOString().split('T')[0] === date
-            );
-        }
+            try {
+                const date = document.getElementById('analysisDate').value;
+                const markets = Array.from(document.getElementById('marketType').selectedOptions)
+                    .map(option => option.value)
+                    .join(',');
 
-        function analyzeData(matchData) {
-            return matchData.map(match => ({
-                match: `${match.home_team} vs ${match.away_team}`,
-                odds: getOdds(match),
-                rating: calculateRating(match),
-                risk: assessRisk(match)
-            })).filter(analysis => analysis.rating > 0);
-        }
-
-        function getOdds(match) {
-            const market = match.bookmakers?.[0]?.markets?.find(m => m.key === 'h2h');
-            return {
-                home: market?.outcomes?.find(o => o.name === match.home_team)?.price,
-                away: market?.outcomes?.find(o => o.name === match.away_team)?.price
-            };
-        }
-
-        function calculateRating(match) {
-            const odds = getOdds(match);
-            if (!odds.home || !odds.away) return 0;
-            return Math.round((1 / ((1/odds.home) + (1/odds.away)) - 1) * 100);
-        }
-
-        function assessRisk(match) {
-            const rating = calculateRating(match);
-            if (rating > 20) return 'high';
-            if (rating > 10) return 'medium';
-            return 'low';
-        }
-
-        function displayResults(analysis) {
-            const results = document.getElementById('results');
-            const content = document.getElementById('analysisResults');
-            
-            if (analysis.length === 0) {
-                content.innerHTML = '<p>Brak wyników dla wybranych kryteriów</p>';
-            } else {
-                content.innerHTML = `
-                    <table class="stats-table">
-                        <tr>
-                            <th>Mecz</th>
-                            <th>Wartość</th>
-                            <th>Ryzyko</th>
-                        </tr>
-                        ${analysis.map(item => `
-                            <tr>
-                                <td>${item.match}</td>
-                                <td>${item.rating}%</td>
-                                <td><span class="risk-indicator">${item.risk}</span></td>
-                            </tr>
-                        `).join('')}
-                    </table>
-                `;
+                const response = await fetch(
+                    `https://api.the-odds-api.com/v4/sports/${sportType}/odds/?apiKey=${API_KEY}&regions=eu&markets=${markets}`
+                );
+                
+                if (response.status === 429) {
+                    throw new Error('Przekroczono limit zapytań API. Spróbuj ponownie później.');
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.filter(match => 
+                    new Date(match.commence_time).toISOString().split('T')[0] === date
+                );
+            } catch (error) {
+                throw new Error('Błąd pobierania meczów: ' + error.message);
             }
-            
-            results.style.display = 'block';
         }
-
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
-        }
-
-        function showError(message) {
-            const error = document.getElementById('errorMessage');
-            error.textContent = message;
-            error.style.display = 'block';
-        }
-    </script>
-</body>
-</html>
-```
-
-Cytaty:
-[1] index.html https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/43096351/c9dcabd3-6134-4236-87d7-546b0f9677f2/index.html
