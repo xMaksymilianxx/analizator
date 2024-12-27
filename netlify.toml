@@ -1,0 +1,11 @@
+[build]
+publish = "."
+command = "# komenda budowania (jeśli potrzebna)"
+
+[build.environment]
+NODE_VERSION = "16"
+
+[[headers]]
+for = "/*"
+[headers.values]
+Access-Control-Allow-Origin = "*"
