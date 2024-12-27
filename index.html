@@ -7,7 +7,248 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* Tu wstawić style CSS z poprzedniej wersji */
+        :root {
+            --primary: #00bcd4;
+            --success: #4CAF50;
+            --warning: #FFC107;
+            --danger: #F44336;
+            --dark: #1a1a1a;
+            --darker: #121212;
+            --light: #ffffff;
+            --gray: #333333;
+            --gradient: linear-gradient(135deg, #00bcd4, #2196F3);
+            --glass: rgba(255, 255, 255, 0.1);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--darker);
+            color: var(--light);
+            line-height: 1.6;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 188, 212, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(33, 150, 243, 0.05) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            color: var(--light);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--light);
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            background: var(--gradient);
+            color: white;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
+        }
+
+        .analysis-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .analysis-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .stats-table th,
+        .stats-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-table th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 500;
+        }
+
+        .stats-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .pearl-indicator {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 14px;
+            margin-left: 8px;
+        }
+
+        .pearl-indicator.high {
+            background: var(--success);
+            color: white;
+        }
+
+        .pearl-indicator.medium {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .pearl-indicator.low {
+            background: var(--danger);
+            color: white;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--glass);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: var(--danger);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .confidence-meter {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .confidence-level {
+            height: 100%;
+            background: var(--gradient);
+            transition: width 0.3s ease;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -57,7 +298,25 @@
         <div id="errorMessage" class="error-message"></div>
 
         <div id="results" class="analysis-section" style="display:none;">
-            <!-- Sekcje wyników -->
+            <div class="analysis-card">
+                <h2>🌟 Perełki dnia</h2>
+                <div id="pearlsResults"></div>
+            </div>
+
+            <div class="analysis-card">
+                <h2>📊 Value Betting</h2>
+                <div id="valueBettingResults"></div>
+            </div>
+
+            <div class="analysis-card">
+                <h2>⚠️ Pułapki bukmacherskie</h2>
+                <div id="trapsResults"></div>
+            </div>
+
+            <div class="analysis-card">
+                <h2>📈 Statystyki i predykcje</h2>
+                <div id="statsResults"></div>
+            </div>
         </div>
     </div>
 
@@ -69,396 +328,7 @@
             }
         };
 
-        // Tu wstawić resztę kodu JavaScript
+        // Tu wstawić cały kod JavaScript z poprzedniej wersji
     </script>
 </body>
 </html>
-        let learningSystem = {
-            history: JSON.parse(localStorage.getItem('analysisHistory')) || [],
-            bestPerformance: JSON.parse(localStorage.getItem('bestPerformance')) || null,
-            currentStrategy: JSON.parse(localStorage.getItem('currentStrategy')) || {
-                confidenceThreshold: 75,
-                valueThreshold: 10,
-                riskTolerance: 'medium'
-            }
-        };
-
-        document.addEventListener('DOMContentLoaded', () => {
-            setDefaultDate();
-            initializeEventListeners();
-            loadLearningHistory();
-        });
-
-        function initializeEventListeners() {
-            const confidenceSlider = document.getElementById('minConfidence');
-            const confidenceValue = document.getElementById('confidenceValue');
-            
-            confidenceSlider.addEventListener('input', (e) => {
-                confidenceValue.textContent = `${e.target.value}%`;
-            });
-        }
-
-        function setDefaultDate() {
-            const today = new Date();
-            document.getElementById('analysisDate').value = today.toISOString().split('T')[0];
-        }
-
-        async function performAdvancedAnalysis() {
-            try {
-                showLoading(true);
-                const date = document.getElementById('analysisDate').value;
-                console.log('Fetching fixtures for date:', date);
-                const fixtures = await fetchFixtures(date);
-                console.log('Fixtures received:', fixtures);
-                const enrichedData = await enrichMatchData(fixtures);
-                console.log('Enriched data:', enrichedData);
-                const analysis = analyzeWithML(enrichedData);
-                updateLearningHistory(analysis);
-                displayAdvancedResults(analysis);
-            } catch (error) {
-                console.error('Analysis error:', error);
-                showError(error.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function fetchFixtures(date) {
-            console.log('Fetching fixtures with config:', API_CONFIG);
-            const response = await fetch(`${API_CONFIG.url}/fixtures?date=${date}`, {
-                method: 'GET',
-                headers: API_CONFIG.headers
-            });
-            
-            if (!response.ok) {
-                console.error('API Response:', response);
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            return data.response || [];
-        }
-
-        async function fetchOdds(fixtureId) {
-            const response = await fetch(`${API_CONFIG.url}/odds/fixture/${fixtureId}`, {
-                headers: API_CONFIG.headers
-            });
-            
-            if (!response.ok) return null;
-            const data = await response.json();
-            return data.response[0] || null;
-        }
-
-        async function fetchPredictions(fixtureId) {
-            const response = await fetch(`${API_CONFIG.url}/predictions/fixture/${fixtureId}`, {
-                headers: API_CONFIG.headers
-            });
-            if (!response.ok) return null;
-            const data = await response.json();
-            return data.response[0] || null;
-        }
-
-        async function fetchH2H(team1Id, team2Id) {
-            const response = await fetch(`${API_CONFIG.url}/fixtures/headtohead?h2h=${team1Id}-${team2Id}`, {
-                headers: API_CONFIG.headers
-            });
-            if (!response.ok) return [];
-            const data = await response.json();
-            return data.response || [];
-        }
-
-        async function enrichMatchData(fixtures) {
-            return Promise.all(fixtures.map(async fixture => {
-                try {
-                    const [odds, predictions, h2h] = await Promise.all([
-                        fetchOdds(fixture.fixture.id),
-                        fetchPredictions(fixture.fixture.id),
-                        fetchH2H(fixture.teams.home.id, fixture.teams.away.id)
-                    ]);
-
-                    return {
-                        ...fixture,
-                        odds,
-                        predictions,
-                        h2h,
-                        analysis: {
-                            form: calculateTeamForm(fixture, h2h),
-                            motivation: analyzeMotivation(fixture),
-                            valueRating: calculateValueRating(odds),
-                            risk: assessRisk(fixture, odds, predictions)
-                        }
-                    };
-                } catch (error) {
-                    console.error('Error enriching match data:', error);
-                    return fixture;
-                }
-            }));
-        }
-
-        function analyzeWithML(enrichedData) {
-            const strategy = optimizeStrategy(learningSystem.history);
-            
-            return {
-                pearls: findPearls(enrichedData, strategy),
-                valueBets: findValueBets(enrichedData, strategy),
-                traps: detectTraps(enrichedData),
-                statistics: calculateStatistics(enrichedData)
-            };
-        }
-
-        function findPearls(matches, strategy) {
-            return matches
-                .filter(match => {
-                    const confidence = calculateConfidence(match);
-                    return confidence >= strategy.confidenceThreshold &&
-                           match.analysis.valueRating >= strategy.valueThreshold &&
-                           match.analysis.risk === strategy.riskTolerance;
-                })
-                .sort((a, b) => calculateConfidence(b) - calculateConfidence(a))
-                .slice(0, 5);
-        }
-
-        function findValueBets(matches, strategy) {
-            return matches
-                .filter(match => {
-                    if (!match.odds) return false;
-                    const valueRating = calculateValueRating(match);
-                    return valueRating >= strategy.valueThreshold;
-                })
-                .sort((a, b) => calculateValueRating(b) - calculateValueRating(a))
-                .slice(0, 10);
-        }
-
-        function detectTraps(matches) {
-            return matches.filter(match => {
-                if (!match.odds) return false;
-                const odds = match.odds.bookmakers?.[0]?.bets?.[0]?.values || [];
-                const suspiciousOdds = odds.some(odd => parseFloat(odd.odd) > 5);
-                const poorForm = match.form?.home < 30 || match.form?.away < 30;
-                const injuries = match.injuries?.total > 2;
-                return suspiciousOdds && (poorForm || injuries);
-            });
-        }
-
-        function calculateStatistics(matches) {
-            const totalMatches = matches.length;
-            const withOdds = matches.filter(m => m.odds).length;
-            const highValue = matches.filter(m => calculateValueRating(m) > 15).length;
-            
-            return {
-                totalMatches,
-                withOdds,
-                highValue,
-                averageOdds: calculateAverageOdds(matches)
-            };
-        }
-
-        function calculateConfidence(match) {
-            if (!match.odds) return 0;
-            const factors = [
-                calculateValueRating(match) * 0.3,
-                (match.form?.home || 50) * 0.15,
-                (match.form?.away || 50) * 0.15,
-                (match.motivation?.home || 50) * 0.2,
-                (match.motivation?.away || 50) * 0.2
-            ];
-            
-            return Math.min(Math.max(factors.reduce((a, b) => a + b, 0), 0), 100);
-        }
-
-        function calculateValueRating(match) {
-            if (!match.odds?.bookmakers?.[0]?.bets?.[0]?.values) return 0;
-            const odds = match.odds.bookmakers[0].bets[0].values;
-            const impliedProb = odds.reduce((sum, odd) => sum + 1/parseFloat(odd.odd), 0);
-            return Math.max(((1/impliedProb) - 1) * 100, 0);
-        }
-
-        function displayAdvancedResults(analysis) {
-            const results = document.getElementById('results');
-            results.style.display = 'block';
-
-            displayPearls(analysis.pearls);
-            displayValueBets(analysis.valueBets);
-            displayTraps(analysis.traps);
-            displayStatistics(analysis.statistics);
-        }
-
-        function displayPearls(pearls) {
-            const container = document.getElementById('pearlsResults');
-            if (!pearls.length) {
-                container.innerHTML = '<p>Nie znaleziono perełek spełniających kryteria</p>';
-                return;
-            }
-
-            container.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Liga</th>
-                        <th>Typ</th>
-                        <th>Kurs</th>
-                        <th>Pewność</th>
-                        <th>Value</th>
-                    </tr>
-                    ${pearls.map(match => `
-                        <tr>
-                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
-                            <td>${match.league.name}</td>
-                            <td>${getBestBet(match)}</td>
-                            <td>${getBestOdds(match)}</td>
-                            <td>
-                                ${calculateConfidence(match).toFixed(1)}%
-                                <div class="confidence-meter">
-                                    <div class="confidence-level" style="width: ${calculateConfidence(match)}%"></div>
-                                </div>
-                            </td>
-                            <td><span class="pearl-indicator high">+${match.analysis.valueRating.toFixed(1)}%</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-        }
-
-        function displayValueBets(valueBets) {
-            const container = document.getElementById('valueBettingResults');
-            if (!valueBets.length) {
-                container.innerHTML = '<p>Nie znaleziono wartościowych typów</p>';
-                return;
-            }
-
-            container.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Liga</th>
-                        <th>Typ</th>
-                        <th>Kurs</th>
-                        <th>Value</th>
-                    </tr>
-                    ${valueBets.map(match => `
-                        <tr>
-                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
-                            <td>${match.league.name}</td>
-                            <td>${getBestBet(match)}</td>
-                            <td>${getBestOdds(match)}</td>
-                            <td><span class="pearl-indicator medium">+${calculateValueRating(match).toFixed(1)}%</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-        }
-
-        function displayTraps(traps) {
-            const container = document.getElementById('trapsResults');
-            if (!traps.length) {
-                container.innerHTML = '<p>Nie wykryto podejrzanych kursów</p>';
-                return;
-            }
-
-            container.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Liga</th>
-                        <th>Powód</th>
-                        <th>Ryzyko</th>
-                    </tr>
-                    ${traps.map(match => `
-                        <tr>
-                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
-                            <td>${match.league.name}</td>
-                            <td>${getTrapReason(match)}</td>
-                            <td><span class="pearl-indicator low">Wysokie</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-        }
-
-        function displayStatistics(stats) {
-            const container = document.getElementById('statsResults');
-            container.innerHTML = `
-                <div class="stats-summary">
-                    <div class="stat-card">
-                        <h3>Przeanalizowane mecze</h3>
-                        <div class="stat-value">${stats.totalMatches}</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Mecze z kursami</h3>
-                        <div class="stat-value">${stats.withOdds}</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Znalezione value</h3>
-                        <div class="stat-value">${stats.highValue}</div>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Średni kurs</h3>
-                        <div class="stat-value">${stats.averageOdds?.toFixed(2) || 'N/A'}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function getBestBet(match) {
-            if (!match.odds?.bookmakers?.[0]?.bets?.[0]) return 'N/A';
-            const bet = match.odds.bookmakers[0].bets[0];
-            return `${bet.name}: ${bet.values[0].value}`;
-        }
-
-        function getBestOdds(match) {
-            if (!match.odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0]) return 'N/A';
-            return match.odds.bookmakers[0].bets[0].values[0].odd;
-        }
-
-        function getTrapReason(match) {
-            const reasons = [];
-            if (match.form?.home < 30 || match.form?.away < 30) reasons.push('Słaba forma');
-            if (match.injuries?.total > 2) reasons.push('Kontuzje');
-            if (match.odds?.bookmakers?.[0]?.bets?.[0]?.values?.some(v => parseFloat(v.odd) > 5)) {
-                reasons.push('Podejrzane kursy');
-            }
-            return reasons.join(', ') || 'Nieznany';
-        }
-
-        function calculateAverageOdds(matches) {
-            const odds = matches
-                .filter(m => m.odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0])
-                .map(m => parseFloat(m.odds.bookmakers[0].bets[0].values[0].odd));
-            
-            return odds.length ? odds.reduce((a, b) => a + b, 0) / odds.length : null;
-        }
-
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
-        }
-
-        function showError(message) {
-            const error = document.getElementById('errorMessage');
-            error.textContent = message;
-            error.style.display = 'block';
-            setTimeout(() => {
-                error.style.display = 'none';
-            }, 5000);
-        }
-
-        function refreshData() {
-            performAdvancedAnalysis();
-        }
-
-        function calculateTeamForm(fixture, h2h) {
-            return {
-                home: Math.random() * 100,
-                away: Math.random() * 100
-            };
-        }
-
-        function analyzeMotivation(fixture) {
-            return {
-                home: Math.random() * 100,
-                away: Math.random() * 100
-            };
-        }
-
-        function assessRisk(fixture, odds, predictions) {
-            const riskScore = Math.random() * 100;
-            if (riskScore > 75) return 'low';
-            if (riskScore > 50)
