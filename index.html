@@ -2,344 +2,76 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Zaawansowany System Analizy Sportowej v2.0</title>
+    <title>Analiza Sportowa</title>
     <style>
-        /* Style CSS z poprzedniej wersji */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        /* Dodatkowe style dla nowych modułów */
-        .ml-prediction {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        .risk-analysis {
-            background: #fff3e0;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        .statistical-analysis {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-        /* Pozostałe style z poprzedniej wersji */
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; background: white; border-radius: 8px; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .error { color: red; padding: 10px; margin: 10px 0; background: #ffe6e6; }
+        .success { color: green; padding: 10px; margin: 10px 0; background: #e6ffe6; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>System Zaawansowanej Analizy Sportowej v2.0</h1>
-        
+        <h1>System Analizy Sportowej</h1>
         <div class="control-panel">
             <input type="date" id="analysisDate">
-            <select id="sportType">
-                <option value="football">Piłka Nożna</option>
-                <option value="basketball">Koszykówka</option>
-                <option value="tennis">Tenis</option>
-            </select>
-            <select id="analysisType">
-                <option value="all">Wszystkie analizy</option>
-                <option value="ml">Machine Learning</option>
-                <option value="statistical">Analiza statystyczna</option>
-                <option value="risk">Analiza ryzyka</option>
-            </select>
-            <button class="btn" onclick="startAdvancedAnalysis()">Rozpocznij Analizę</button>
+            <button onclick="startAnalysis()">Rozpocznij Analizę</button>
         </div>
-
-        <div id="loadingIndicator" class="loading" style="display: none;">
-            Trwa zaawansowana analiza danych...
-        </div>
-
+        <div id="loading" class="loading">Trwa analiza danych...</div>
         <div id="results"></div>
     </div>
 
     <script>
-        const API_KEY = 'ac0417c6e0dcfa236b146b9585892c9a';
-        const API_HOST = 'api-football-v1.p.rapidapi.com';
-        
-        // Cache dla wyników
-        const analysisCache = new Map();
-
-        // Nowy system analizy z wykorzystaniem ML
-        async function startAdvancedAnalysis() {
+        async function startAnalysis() {
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
             const date = document.getElementById('analysisDate').value;
-            const sportType = document.getElementById('sportType').value;
-            const analysisType = document.getElementById('analysisType').value;
 
             if (!date) {
-                alert('Wybierz datę analizy');
+                results.innerHTML = '<div class="error">Wybierz datę!</div>';
                 return;
             }
 
-            showLoading(true);
+            loading.style.display = 'block';
+            results.innerHTML = '';
 
             try {
-                // Pobieranie rozszerzonych danych
-                const data = await fetchComplexData(date, sportType);
+                const response = await fetch('https://api-football-v1.p.rapidapi.com/v3/fixtures', {
+                    method: 'GET',
+                    headers: {
+                        'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
+                        'x-rapidapi-key': 'ac0417c6e0dcfa236b146b9585892c9a'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Problem z połączeniem z API');
+                }
+
+                const data = await response.json();
                 
-                // Przeprowadzanie zaawansowanych analiz
-                const analysis = await performAdvancedAnalysis(data, analysisType);
-                
-                // Wyświetlanie wyników
-                displayAdvancedResults(analysis);
+                results.innerHTML = `
+                    <div class="success">
+                        <h3>Wyniki analizy:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
             } catch (error) {
-                console.error('Błąd analizy:', error);
-                showError(`Błąd podczas analizy: ${error.message}`);
+                results.innerHTML = `
+                    <div class="error">
+                        Wystąpił błąd: ${error.message}
+                    </div>
+                `;
             } finally {
-                showLoading(false);
+                loading.style.display = 'none';
             }
         }
 
-        async function fetchComplexData(date, sportType) {
-            const endpoints = [
-                'fixtures',
-                'odds',
-                'statistics',
-                'predictions',
-                'teams/statistics',
-                'players/statistics'
-            ];
-
-            const promises = endpoints.map(endpoint => 
-                fetchApiData(endpoint, { date, sport: sportType })
-            );
-
-            return Promise.all(promises);
-        }
-
-        // Nowe funkcje analizy statystycznej
-        function advancedStatisticalAnalysis(data) {
-            return {
-                correlationAnalysis: performCorrelation(data),
-                regressionAnalysis: performRegression(data),
-                trendAnalysis: analyzeTrends(data),
-                seasonalPatterns: analyzeSeasonalPatterns(data),
-                performanceMetrics: calculatePerformanceMetrics(data)
-            };
-        }
-
-        // Funkcje uczenia maszynowego
-        function machineLearningPredictions(historicalData) {
-            return {
-                predictedOutcome: predictOutcome(historicalData),
-                confidenceScore: calculateMLConfidence(historicalData),
-                featureImportance: analyzeFeatures(historicalData),
-                modelPerformance: evaluateModelPerformance(historicalData),
-                probabilityDistribution: calculateProbabilityDistribution(historicalData)
-            };
-        }
-
-        // Rozszerzona analiza ryzyka
-        function enhancedRiskAnalysis(matchData) {
-            return {
-                marketVolatility: analyzeMarketVolatility(matchData),
-                bookmakerTraps: detectTraps(matchData),
-                riskScore: calculateRiskScore(matchData),
-                marketManipulation: detectMarketManipulation(matchData),
-                oddMovements: analyzeOddMovements(matchData)
-            };
-        }
-
-        // Implementacje funkcji pomocniczych
-        function performCorrelation(data) {
-            // Implementacja analizy korelacji
-            return {
-                pearsonCorrelation: calculatePearsonCorrelation(data),
-                spearmanCorrelation: calculateSpearmanCorrelation(data)
-            };
-        }
-
-        function performRegression(data) {
-            // Implementacja analizy regresji
-            return {
-                linearRegression: performLinearRegression(data),
-                logisticRegression: performLogisticRegression(data)
-            };
-        }
-
-        function analyzeTrends(data) {
-            // Implementacja analizy trendów
-            return {
-                shortTerm: analyzeShortTermTrends(data),
-                longTerm: analyzeLongTermTrends(data)
-            };
-        }
-
-        // Kontynuacja w następnej części...
-<script>
-    // Funkcje uczenia maszynowego
-    function predictOutcome(historicalData) {
-        return {
-            winProbability: calculateWinProbability(historicalData),
-            drawProbability: calculateDrawProbability(historicalData),
-            lossProbability: calculateLossProbability(historicalData)
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('analysisDate').value = today;
         };
-    }
-
-    function calculateMLConfidence(historicalData) {
-        const features = extractFeatures(historicalData);
-        const modelPrediction = trainAndPredict(features);
-        return normalizeConfidence(modelPrediction);
-    }
-
-    function analyzeFeatures(historicalData) {
-        return {
-            importantFactors: findImportantFactors(historicalData),
-            featureCorrelations: calculateFeatureCorrelations(historicalData),
-            featureRanking: rankFeatures(historicalData)
-        };
-    }
-
-    // Funkcje analizy ryzyka
-    function analyzeMarketVolatility(matchData) {
-        return {
-            oddVolatility: calculateOddVolatility(matchData),
-            marketTrends: analyzeMarketTrends(matchData),
-            volatilityScore: calculateVolatilityScore(matchData)
-        };
-    }
-
-    function detectTraps(matchData) {
-        return {
-            suspiciousPatterns: findSuspiciousPatterns(matchData),
-            oddDiscrepancies: analyzeOddDiscrepancies(matchData),
-            marketAnomalies: detectMarketAnomalies(matchData)
-        };
-    }
-
-    function calculateRiskScore(matchData) {
-        const volatilityScore = analyzeMarketVolatility(matchData).volatilityScore;
-        const trapRisk = detectTraps(matchData).suspiciousPatterns.length;
-        const marketRisk = analyzeMarketConditions(matchData);
-        
-        return normalizeRiskScore(volatilityScore, trapRisk, marketRisk);
-    }
-
-    // Funkcje wyświetlania wyników
-    function displayAdvancedResults(analysis) {
-        const resultsDiv = document.getElementById('results');
-        resultsDiv.innerHTML = '';
-
-        // Sekcja ML
-        const mlSection = createMLSection(analysis.mlPredictions);
-        resultsDiv.appendChild(mlSection);
-
-        // Sekcja statystyczna
-        const statsSection = createStatsSection(analysis.statistics);
-        resultsDiv.appendChild(statsSection);
-
-        // Sekcja ryzyka
-        const riskSection = createRiskSection(analysis.riskAnalysis);
-        resultsDiv.appendChild(riskSection);
-    }
-
-    function createMLSection(mlData) {
-        const section = document.createElement('div');
-        section.className = 'ml-prediction';
-        section.innerHTML = `
-            <h3>Analiza Machine Learning</h3>
-            <div class="prediction-details">
-                <p><strong>Przewidywany wynik:</strong> ${mlData.predictedOutcome}</p>
-                <p><strong>Pewność predykcji:</strong> ${mlData.confidenceScore}%</p>
-                <div class="feature-importance">
-                    <h4>Kluczowe czynniki:</h4>
-                    <ul>
-                        ${mlData.featureImportance.map(feature => 
-                            `<li>${feature.name}: ${feature.importance}%</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-            </div>
-        `;
-        return section;
-    }
-
-    function createStatsSection(statsData) {
-        const section = document.createElement('div');
-        section.className = 'statistical-analysis';
-        section.innerHTML = `
-            <h3>Analiza Statystyczna</h3>
-            <div class="stats-details">
-                <p><strong>Korelacja:</strong> ${statsData.correlationAnalysis.pearsonCorrelation}</p>
-                <p><strong>Trend:</strong> ${statsData.trendAnalysis.shortTerm.direction}</p>
-                <div class="performance-metrics">
-                    <h4>Metryki wydajności:</h4>
-                    <ul>
-                        ${Object.entries(statsData.performanceMetrics).map(([key, value]) => 
-                            `<li>${key}: ${value}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-            </div>
-        `;
-        return section;
-    }
-
-    function createRiskSection(riskData) {
-        const section = document.createElement('div');
-        section.className = 'risk-analysis';
-        section.innerHTML = `
-            <h3>Analiza Ryzyka</h3>
-            <div class="risk-details">
-                <p><strong>Wskaźnik ryzyka:</strong> ${riskData.riskScore}</p>
-                <p><strong>Zmienność rynku:</strong> ${riskData.marketVolatility.volatilityScore}</p>
-                <div class="risk-warnings">
-                    <h4>Ostrzeżenia:</h4>
-                    <ul>
-                        ${riskData.bookmakerTraps.map(trap => 
-                            `<li class="warning">${trap}</li>`
-                        ).join('')}
-                    </ul>
-                </div>
-            </div>
-        `;
-        return section;
-    }
-
-    // Funkcje pomocnicze
-    function normalizeConfidence(prediction) {
-        return Math.min(Math.max(prediction * 100, 0), 100).toFixed(2);
-    }
-
-    function normalizeRiskScore(...factors) {
-        const weightedSum = factors.reduce((sum, factor, index) => 
-            sum + factor * (1 / Math.pow(2, index)), 0);
-        return Math.min(Math.max(weightedSum * 100, 0), 100).toFixed(2);
-    }
-
-    function findImportantFactors(data) {
-        // Implementacja analizy ważnych czynników
-        return [
-            { name: 'Forma drużyny', importance: 85 },
-            { name: 'H2H', importance: 75 },
-            { name: 'Motywacja', importance: 70 }
-        ];
-    }
-
-    function analyzeMarketConditions(data) {
-        // Implementacja analizy warunków rynkowych
-        return Math.random() * 100;
-    }
-
-    // Inicjalizacja przy załadowaniu strony
-    window.onload = function() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('analysisDate').value = today;
-    };
-</script>
+    </script>
 </body>
 </html>
