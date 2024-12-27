@@ -186,14 +186,7 @@
 
         <div class="control-panel">
             <div class="form-group">
-                <label><i class="fas fa-trophy"></i> Liga:</label>
-                <select id="leagueSelect" class="form-control">
-                    <option value="">Ładowanie lig...</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label><i class="fas fa-calendar"></i> Data:</label>
+                <label><i class="fas fa-calendar"></i> Data analizy:</label>
                 <input type="date" id="analysisDate" class="form-control">
             </div>
 
@@ -251,8 +244,8 @@
         </div>
 
         <div style="text-align: center;">
-            <button onclick="performAdvancedAnalysis()" class="btn">
-                <i class="fas fa-search"></i> Analizuj
+            <button onclick="performGlobalAnalysis()" class="btn">
+                <i class="fas fa-search"></i> Analizuj wszystkie mecze
             </button>
             <button onclick="refreshData()" class="btn">
                 <i class="fas fa-sync"></i> Odśwież dane
@@ -288,31 +281,22 @@
             </div>
         </div>
     </div>
-
     <script>
         const API_CONFIG = {
-            url: 'https://api-football-v1.rapidapi.com/v2',
+            url: 'https://api-football-v1.rapidapi.com/v3',
             headers: {
                 'x-rapidapi-host': 'api-football-v1.rapidapi.com',
                 'x-rapidapi-key': 'cae91aebdemsh34aeee667655c55p10476djsn8ecef9041e01'
             }
         };
-
-        const DEFAULT_LEAGUES = [
-            {id: 39, name: "Premier League"},
-            {id: 140, name: "La Liga"},
-            {id: 135, name: "Serie A"},
-            {id: 78, name: "Bundesliga"},
-            {id: 61, name: "Ligue 1"},
-            {id: 106, name: "Eredivisie"}
-        ];
         
         let cachedData = {};
+        
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                await loadLeagues();
                 setDefaultDate();
                 initializeEventListeners();
+                await performGlobalAnalysis();
             } catch (error) {
                 showError('Błąd inicjalizacji: ' + error.message);
             }
@@ -325,30 +309,16 @@
         }
 
         function setDefaultDate() {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('analysisDate').value = tomorrow.toISOString().split('T')[0];
+            const today = new Date();
+            document.getElementById('analysisDate').value = today.toISOString().split('T')[0];
         }
 
-        async function loadLeagues() {
+        async function performGlobalAnalysis() {
             try {
-                const leagueSelect = document.getElementById('leagueSelect');
-                leagueSelect.innerHTML = DEFAULT_LEAGUES
-                    .map(league => `<option value="${league.id}">${league.name}</option>`)
-                    .join('');
-            } catch (error) {
-                showError('Błąd podczas ładowania lig: ' + error.message);
-            }
-        }
-
-        async function performAdvancedAnalysis() {
-            try {
-                const leagueId = document.getElementById('leagueSelect').value;
-                if (!leagueId) throw new Error('Wybierz ligę');
-
                 showLoading(true);
-                const matchData = await fetchMatchData(leagueId);
-                const enrichedData = await enrichMatchData(matchData);
+                const date = document.getElementById('analysisDate').value;
+                const fixtures = await fetchAllFixtures(date);
+                const enrichedData = await enrichMatchData(fixtures);
                 const analysis = analyzeEnrichedData(enrichedData);
                 displayAdvancedResults(analysis);
             } catch (error) {
@@ -358,98 +328,168 @@
             }
         }
 
-        async function fetchMatchData(leagueId) {
+        async function fetchAllFixtures(date) {
             try {
-                const cacheKey = `league_${leagueId}_${document.getElementById('analysisDate').value}`;
-                if (cachedData[cacheKey]) {
-                    return cachedData[cacheKey];
-                }
-
-                const response = await fetch(`${API_CONFIG.url}/odds/league/${leagueId}/bookmaker/5`, {
-                    headers: API_CONFIG.headers,
-                    mode: 'cors'
+                const response = await fetch(`${API_CONFIG.url}/fixtures?date=${date}`, {
+                    headers: API_CONFIG.headers
                 });
                 
-                if (response.status === 429) {
-                    throw new Error('Przekroczono limit zapytań API. Spróbuj ponownie później.');
-                }
-                
-                if (!response.ok) {
-                    throw new Error(`Błąd HTTP: ${response.status}`);
-                }
-
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-                if (!data.api || !data.api.odds) {
-                    throw new Error('Nieprawidłowa odpowiedź API');
+                
+                if (!data.response || data.response.length === 0) {
+                    throw new Error('Brak meczów dla wybranej daty');
                 }
 
-                cachedData[cacheKey] = data.api.odds;
-                return data.api.odds;
+                return data.response;
             } catch (error) {
-                throw new Error('Błąd pobierania kursów: ' + error.message);
+                throw new Error('Błąd pobierania meczów: ' + error.message);
             }
         }
 
-        async function enrichMatchData(matchData) {
-            return Promise.all(matchData.map(async match => {
-                const enriched = {
-                    ...match,
-                    weather: await fetchWeatherData(match),
-                    injuries: await fetchInjuriesData(match),
-                    h2h: await fetchH2HData(match),
-                    form: calculateTeamForm(match),
-                    motivation: analyzeMotivation(match)
-                };
-                enriched.valueRating = calculateValueRating(enriched);
-                enriched.risk = assessRisk(enriched);
-                return enriched;
+        async function enrichMatchData(fixtures) {
+            return Promise.all(fixtures.map(async fixture => {
+                try {
+                    const [odds, h2h] = await Promise.all([
+                        fetchOdds(fixture.fixture.id),
+                        fetchH2H(fixture.teams.home.id, fixture.teams.away.id)
+                    ]);
+
+                    return {
+                        ...fixture,
+                        odds,
+                        h2h,
+                        weather: await fetchWeatherData(fixture),
+                        injuries: await fetchInjuriesData(fixture),
+                        form: calculateTeamForm(fixture),
+                        motivation: analyzeMotivation(fixture)
+                    };
+                } catch (error) {
+                    console.error('Error enriching match data:', error);
+                    return fixture;
+                }
             }));
+        }
+
+        async function fetchOdds(fixtureId) {
+            try {
+                const response = await fetch(`${API_CONFIG.url}/odds/fixture/${fixtureId}`, {
+                    headers: API_CONFIG.headers
+                });
+                
+                if (!response.ok) return null;
+                const data = await response.json();
+                return data.response[0] || null;
+            } catch (error) {
+                console.error('Error fetching odds:', error);
+                return null;
+            }
+        }
+
+        async function fetchH2H(team1Id, team2Id) {
+            try {
+                const response = await fetch(`${API_CONFIG.url}/fixtures/headtohead?h2h=${team1Id}-${team2Id}`, {
+                    headers: API_CONFIG.headers
+                });
+                
+                if (!response.ok) return [];
+                const data = await response.json();
+                return data.response || [];
+            } catch (error) {
+                console.error('Error fetching H2H:', error);
+                return [];
+            }
         }
 
         function analyzeEnrichedData(enrichedData) {
             const minConfidence = parseInt(document.getElementById('minConfidence').value);
             const selectedMarkets = Array.from(document.getElementById('marketType').selectedOptions)
                 .map(option => option.value);
+            const riskLevel = document.getElementById('riskLevel').value;
 
             return {
-                pearls: findPearls(enrichedData, minConfidence),
+                pearls: findPearls(enrichedData, minConfidence, riskLevel),
                 valueBets: findValueBets(enrichedData, selectedMarkets),
                 traps: detectTraps(enrichedData),
                 statistics: calculateStatistics(enrichedData)
             };
         }
 
-        function findPearls(matches, minConfidence) {
+        function findPearls(matches, minConfidence, riskLevel) {
             return matches
                 .filter(match => {
+                    if (!match.odds) return false;
                     const confidence = calculateConfidence(match);
-                    return confidence > minConfidence && 
-                           match.valueRating > 15 &&
-                           match.risk === 'low';
+                    const matchRisk = assessRisk(match);
+                    return confidence >= minConfidence && matchRisk === riskLevel;
                 })
                 .sort((a, b) => calculateConfidence(b) - calculateConfidence(a))
-                .slice(0, 3);
+                .slice(0, 5);
         }
 
         function findValueBets(matches, selectedMarkets) {
             return matches
                 .filter(match => {
-                    const bets = match.bookmakers?.[0]?.bets || [];
-                    return bets.some(bet => selectedMarkets.includes(bet.name)) &&
-                           match.valueRating > 10;
+                    if (!match.odds) return false;
+                    return selectedMarkets.some(market => 
+                        match.odds.bookmakers?.some(b => 
+                            b.bets?.some(bet => bet.name === market)
+                        )
+                    );
                 })
-                .sort((a, b) => b.valueRating - a.valueRating);
+                .sort((a, b) => calculateValueRating(b) - calculateValueRating(a))
+                .slice(0, 10);
         }
 
         function detectTraps(matches) {
             return matches.filter(match => {
-                const odds = match.bookmakers?.[0]?.bets?.[0]?.values || [];
-                const suspiciouslyHighOdds = odds.some(odd => parseFloat(odd) > 5);
-                const lowMotivation = match.motivation.home < 30 || match.motivation.away < 30;
-                const highInjuries = match.injuries.homeTeam > 2 || match.injuries.awayTeam > 2;
-                
-                return suspiciouslyHighOdds && (lowMotivation || highInjuries);
+                if (!match.odds) return false;
+                const odds = match.odds.bookmakers?.[0]?.bets?.[0]?.values || [];
+                const suspiciousOdds = odds.some(odd => parseFloat(odd.odd) > 5);
+                const poorForm = match.form?.home < 30 || match.form?.away < 30;
+                const injuries = match.injuries?.total > 2;
+                return suspiciousOdds && (poorForm || injuries);
             });
+        }
+
+        function calculateStatistics(matches) {
+            const totalMatches = matches.length;
+            const withOdds = matches.filter(m => m.odds).length;
+            const highValue = matches.filter(m => calculateValueRating(m) > 15).length;
+            
+            return {
+                totalMatches,
+                withOdds,
+                highValue,
+                averageOdds: calculateAverageOdds(matches)
+            };
+        }
+
+        function calculateConfidence(match) {
+            if (!match.odds) return 0;
+            const factors = [
+                calculateValueRating(match) * 0.3,
+                (match.form?.home || 50) * 0.15,
+                (match.form?.away || 50) * 0.15,
+                (match.motivation?.home || 50) * 0.2,
+                (match.motivation?.away || 50) * 0.2
+            ];
+            
+            return Math.min(Math.max(factors.reduce((a, b) => a + b, 0), 0), 100);
+        }
+
+        function calculateValueRating(match) {
+            if (!match.odds?.bookmakers?.[0]?.bets?.[0]?.values) return 0;
+            const odds = match.odds.bookmakers[0].bets[0].values;
+            const impliedProb = odds.reduce((sum, odd) => sum + 1/parseFloat(odd.odd), 0);
+            return Math.max(((1/impliedProb) - 1) * 100, 0);
+        }
+
+        function assessRisk(match) {
+            const confidence = calculateConfidence(match);
+            if (confidence > 75) return 'low';
+            if (confidence > 50) return 'medium';
+            return 'high';
         }
 
         function displayAdvancedResults(analysis) {
@@ -460,6 +500,132 @@
             displayValueBets(analysis.valueBets);
             displayTraps(analysis.traps);
             displayStatistics(analysis.statistics);
+        }
+
+        function displayPearls(pearls) {
+            const container = document.getElementById('pearlsResults');
+            if (!pearls.length) {
+                container.innerHTML = '<p>Nie znaleziono perełek spełniających kryteria</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Liga</th>
+                        <th>Typ</th>
+                        <th>Kurs</th>
+                        <th>Pewność</th>
+                    </tr>
+                    ${pearls.map(match => `
+                        <tr>
+                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
+                            <td>${match.league.name}</td>
+                            <td>${getBestBet(match)}</td>
+                            <td>${getBestOdds(match)}</td>
+                            <td>${calculateConfidence(match).toFixed(1)}%</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        }
+
+        function displayValueBets(valueBets) {
+            const container = document.getElementById('valueBettingResults');
+            if (!valueBets.length) {
+                container.innerHTML = '<p>Nie znaleziono wartościowych typów</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Liga</th>
+                        <th>Rynek</th>
+                        <th>Kurs</th>
+                        <th>Value</th>
+                    </tr>
+                    ${valueBets.map(match => `
+                        <tr>
+                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
+                            <td>${match.league.name}</td>
+                            <td>${getBestBet(match)}</td>
+                            <td>${getBestOdds(match)}</td>
+                            <td>${calculateValueRating(match).toFixed(1)}%</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        }
+
+        function displayTraps(traps) {
+            const container = document.getElementById('trapsResults');
+            if (!traps.length) {
+                container.innerHTML = '<p>Nie wykryto podejrzanych kursów</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Liga</th>
+                        <th>Powód</th>
+                        <th>Ryzyko</th>
+                    </tr>
+                    ${traps.map(match => `
+                        <tr>
+                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
+                            <td>${match.league.name}</td>
+                            <td>${getTrapReason(match)}</td>
+                            <td><span class="risk-indicator risk-high">Wysokie</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+        }
+
+        function displayStatistics(stats) {
+            const container = document.getElementById('statsResults');
+            container.innerHTML = `
+                <div class="stats-summary">
+                    <p>Przeanalizowano meczów: ${stats.totalMatches}</p>
+                    <p>Mecze z kursami: ${stats.withOdds}</p>
+                    <p>Znalezione value: ${stats.highValue}</p>
+                    <p>Średni kurs: ${stats.averageOdds?.toFixed(2) || 'N/A'}</p>
+                </div>
+            `;
+        }
+
+        function getBestBet(match) {
+            if (!match.odds?.bookmakers?.[0]?.bets?.[0]) return 'N/A';
+            const bet = match.odds.bookmakers[0].bets[0];
+            return `${bet.name}: ${bet.values[0].value}`;
+        }
+
+        function getBestOdds(match) {
+            if (!match.odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0]) return 'N/A';
+            return match.odds.bookmakers[0].bets[0].values[0].odd;
+        }
+
+        function getTrapReason(match) {
+            const reasons = [];
+            if (match.form?.home < 30 || match.form?.away < 30) reasons.push('Słaba forma');
+            if (match.injuries?.total > 2) reasons.push('Kontuzje');
+            if (match.odds?.bookmakers?.[0]?.bets?.[0]?.values?.some(v => parseFloat(v.odd) > 5)) {
+                reasons.push('Podejrzane kursy');
+            }
+            return reasons.join(', ') || 'Nieznany';
+        }
+
+        function calculateAverageOdds(matches) {
+            const odds = matches
+                .filter(m => m.odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0])
+                .map(m => parseFloat(m.odds.bookmakers[0].bets[0].values[0].odd));
+            
+            return odds.length ? odds.reduce((a, b) => a + b, 0) / odds.length : null;
         }
 
         function showLoading(show) {
@@ -477,10 +643,10 @@
 
         function refreshData() {
             cachedData = {};
-            performAdvancedAnalysis();
+            performGlobalAnalysis();
         }
 
-        // Pomocnicze funkcje symulujące pobieranie danych
+        // Symulowane funkcje pobierania dodatkowych danych
         async function fetchWeatherData(match) {
             return {
                 temperature: Math.round(Math.random() * 25 + 5),
@@ -491,20 +657,9 @@
 
         async function fetchInjuriesData(match) {
             return {
-                homeTeam: Math.floor(Math.random() * 3),
-                awayTeam: Math.floor(Math.random() * 3),
-                keyPlayers: Math.random() > 0.7,
+                total: Math.floor(Math.random() * 5),
+                key_players: Math.random() > 0.7,
                 impact: Math.random() * 100
-            };
-        }
-
-        async function fetchH2HData(match) {
-            return {
-                lastMatches: Array(5).fill(0).map(() => ({
-                    result: `${Math.floor(Math.random() * 4)}-${Math.floor(Math.random() * 4)}`,
-                    date: new Date(Date.now() - Math.random() * 31536000000).toISOString()
-                })),
-                homeAdvantage: Math.random() * 100
             };
         }
 
@@ -518,104 +673,4 @@
 
         function analyzeMotivation(match) {
             return {
-                home: Math.random() * 100,
-                away: Math.random() * 100,
-                factors: {
-                    position: Math.random() * 100,
-                    importance: Math.random() * 100,
-                    rivalry: Math.random() * 100
-                }
-            };
-        }
-
-        function calculateValueRating(match) {
-            const odds = match.bookmakers?.[0]?.bets?.[0]?.values || [];
-            if (odds.length < 2) return 0;
-
-            const impliedProb = odds.reduce((sum, odd) => sum + 1/parseFloat(odd), 0);
-            return ((1/impliedProb) - 1) * 100;
-        }
-
-        function calculateConfidence(match) {
-            const factors = [
-                match.valueRating * 0.3,
-                match.form.home * 0.15,
-                match.form.away * 0.15,
-                match.motivation.home * 0.2,
-                match.motivation.away * 0.2
-            ];
-            
-            return Math.min(factors.reduce((a, b) => a + b, 0), 100);
-        }
-
-        function calculateStatistics(matches) {
-            // Implementacja obliczania statystyk
-            return {};
-        }
-
-        function displayPearls(pearls) {
-            const container = document.getElementById('pearlsResults');
-            if (!pearls.length) {
-                container.innerHTML = '<p>Nie znaleziono perełek spełniających kryteria</p>';
-                return;
-            }
-
-            container.innerHTML = generateTableHTML(pearls, ['Mecz', 'Typ', 'Kurs', 'Pewność', 'Ryzyko']);
-        }
-
-        function displayValueBets(valueBets) {
-            const container = document.getElementById('valueBettingResults');
-            if (!valueBets.length) {
-                container.innerHTML = '<p>Nie znaleziono wartościowych typów</p>';
-                return;
-            }
-
-            container.innerHTML = generateTableHTML(valueBets, ['Mecz', 'Rynek', 'Wartość', 'Kurs']);
-        }
-
-        function displayTraps(traps) {
-            const container = document.getElementById('trapsResults');
-            if (!traps.length) {
-                container.innerHTML = '<p>Nie wykryto podejrzanych kursów</p>';
-                return;
-            }
-
-            container.innerHTML = generateTableHTML(traps, ['Mecz', 'Powód', 'Ryzyko']);
-        }
-
-        function displayStatistics(statistics) {
-            const container = document.getElementById('statsResults');
-            container.innerHTML = '<p>Statystyki w przygotowaniu...</p>';
-        }
-
-        function generateTableHTML(data, headers) {
-            return `
-                <table class="stats-table">
-                    <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
-                    ${data.map(item => `
-                        <tr>${generateTableRow(item, headers)}</tr>
-                    `).join('')}
-                </table>
-            `;
-        }
-
-        function generateTableRow(item, headers) {
-            return headers.map(header => {
-                const value = getValueForHeader(item, header);
-                return `<td>${formatValue(value, header)}</td>`;
-            }).join('');
-        }
-
-        function getValueForHeader(item, header) {
-            return item[header.toLowerCase()] || '-';
-        }
-
-        function formatValue(value, type) {
-            if (typeof value === 'number') {
-                return value.toFixed(2);
-            }
-            return value;
-        }
-    </script>
-</body>
-</html>
+                home: Math.random() * 100
