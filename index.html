@@ -391,43 +391,11 @@
         <div id="errorMessage" class="error-message"></div>
 
         
-<style id="dark-mode-styles" disabled>
-    body {
-        background-color: #121212;
-        color: #e0e0e0;
-    }
-    .card, .header, .control-panel, .analysis-card {
-        background-color: #1e1e1e;
-        color: #e0e0e0;
-        box-shadow: none;
-    }
-    .btn-primary {
-        background: var(--gradient-primary);
-        color: white;
-    }
-    .stats-table th, .stats-table td {
-        border-color: #333;
-    }
-</style>
-
 <div style="text-align: center; margin-bottom: 20px;">
-    <button onclick="toggleDarkMode()" class="btn btn-primary">
-        <i class="fas fa-adjust"></i> Przełącz motyw
+    <button id="analyzeAllButton" class="btn btn-primary">
+        <i class="fas fa-layer-group"></i> Analizuj wszystkie typy i sporty
     </button>
 </div>
-
-<script>
-    function toggleDarkMode() {
-        const darkModeStyles = document.getElementById('dark-mode-styles');
-        if (darkModeStyles.disabled) {
-            darkModeStyles.disabled = false;
-            document.body.classList.add('dark-mode');
-        } else {
-            darkModeStyles.disabled = true;
-            document.body.classList.remove('dark-mode');
-        }
-    }
-</script>
 
 <div id="analysisResults" class="analysis-section">
             <div class="analysis-card">
@@ -503,7 +471,11 @@
 
         function updateLastRefreshTime() {
             const now = new Date();
-            document.getElementById('lastUpdate').textContent = 
+            if (document.getElementById('lastUpdate')) {
+        document.getElementById('lastUpdate').textContent =
+    } else {
+        console.error('Last update container not found.');
+    } 
                 `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
         }
 
@@ -940,22 +912,76 @@
             `;
         }
     
-document.addEventListener('DOMContentLoaded', function() {
-    const findGemsButton = document.getElementById('findGemsButton');
-    if (findGemsButton) {
-        findGemsButton.addEventListener('click', function() {
-            findGems();
+document.addEventListener('DOMContentLoaded', function () {
+    const analyzeAllButton = document.getElementById('analyzeAllButton');
+    if (analyzeAllButton) {
+        analyzeAllButton.addEventListener('click', function () {
+            analyzeAllSportsAndTypes();
         });
     } else {
-        console.error('Przycisk "Znajdź perełki" nie został znaleziony.');
+        console.error('Przycisk analizy wszystkich typów i sportów nie został znaleziony.');
     }
 });
 
-function findGems() {
-    // Przykładowa logika dla analizy perełek dnia
-    alert('Rozpoczynam analizę perełek dnia...');
-    // Tutaj można dodać więcej kodu do wykonywania rzeczywistej analizy.
-    console.log('Analiza perełek dnia została rozpoczęta.');
+async function analyzeAllSportsAndTypes() {
+    showLoading(true);
+    try {
+        alert('Rozpoczynam zaawansowaną analizę wszystkich typów i sportów...');
+        // Pobieranie danych dla wszystkich sportów
+        const sportsData = await fetchAllSportsData();
+        const analysisResults = sportsData.map(analyzeSportData);
+        displayAdvancedAnalysisResults(analysisResults);
+    } catch (error) {
+        console.error('Błąd podczas analizy:', error);
+        showError('Błąd podczas zaawansowanej analizy: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function fetchAllSportsData() {
+    // Placeholder - tutaj można zintegrować API do pobierania danych
+    return [
+        { sport: 'Piłka nożna', data: [] },
+        { sport: 'Koszykówka', data: [] },
+    ];
+}
+
+function analyzeSportData(sportData) {
+    // Przykładowa logika analizy sportu
+    return {
+        sport: sportData.sport,
+        bestBets: [
+            { match: 'Team A vs Team B', confidence: 95, value: 20 },
+            { match: 'Team C vs Team D', confidence: 92, value: 18 },
+        ],
+    };
+}
+
+function displayAdvancedAnalysisResults(results) {
+    const analysisContainer = document.getElementById('analysisResults');
+    if (!analysisContainer) {
+        console.error('Kontener wyników analizy nie został znaleziony.');
+        return;
+    }
+    analysisContainer.style.display = 'block';
+    analysisContainer.innerHTML = results.map(result => `
+        <h2>${result.sport}</h2>
+        <table class="stats-table">
+            <tr>
+                <th>Mecz</th>
+                <th>Pewność</th>
+                <th>Wartość</th>
+            </tr>
+            ${result.bestBets.map(bet => `
+                <tr>
+                    <td>${bet.match}</td>
+                    <td>${bet.confidence}%</td>
+                    <td>${bet.value}%</td>
+                </tr>
+            `).join('')}
+        </table>
+    `).join('');
 }
 
 </script>
