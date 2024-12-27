@@ -1,324 +1,351 @@
-Podaj pełną kompletną zawartość kodu html w takiej ilości części jak będzie to potrzeba numerować każdą części i pisać która to jest cześć z cfkofbii
-
-Kod HTML jest zbyt długi na jedną odpowiedź. Podzielę go na części i ponumeruję każdą z nich.
-
-Część 1 z 3 (Sekcja HEAD):
-```html
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Betting Analyzer 7.0 🎯</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Zaawansowany System Analizy Sportowej</title>
     <style>
-        /* Tu wstawić style CSS */
-    </style>
-</head>
-```
-
-Powiedz "kontynuuj" aby zobaczyć kolejne części kodu[1].
-
-Cytaty:
-[1] index.html https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/43096351/c9dcabd3-6134-4236-87d7-546b0f9677f2/index.html
-    <style>
-        :root {
-            --primary: #00bcd4;
-            --success: #4CAF50;
-            --warning: #FFC107;
-            --danger: #F44336;
-            --dark: #1a1a1a;
-            --darker: #121212;
-            --light: #ffffff;
-            --gray: #333333;
-            --gradient: linear-gradient(135deg, #00bcd4, #2196F3);
-            --glass: rgba(255, 255, 255, 0.1);
-            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Roboto', sans-serif;
-        }
-
         body {
-            background-color: var(--darker);
-            color: var(--light);
-            line-height: 1.6;
-            min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(0, 188, 212, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 90% 80%, rgba(33, 150, 243, 0.05) 0%, transparent 50%);
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
         }
-
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        .header {
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            color: var(--light);
-            padding: 30px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            text-align: center;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
         .control-panel {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            font-size: 16px;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--light);
-            transition: all 0.3s ease;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            background: var(--gradient);
-            color: white;
-            margin: 5px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
-        }
-
-        .analysis-card {
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            padding: 25px;
-            border-radius: 16px;
             margin-bottom: 20px;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid var(--glass);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .error-message {
-            background: var(--danger);
-            color: white;
             padding: 15px;
-            border-radius: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .prediction-card {
+            border: 1px solid #ddd;
+            padding: 15px;
             margin: 10px 0;
-            display: none;
+            border-radius: 5px;
+            background: white;
+        }
+        .high-confidence {
+            border-left: 5px solid #4caf50;
+        }
+        .medium-confidence {
+            border-left: 5px solid #ffc107;
+        }
+        .low-confidence {
+            border-left: 5px solid #f44336;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .warning {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .success {
+            color: #388e3c;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🎯 Pro Betting Analyzer 7.0</h1>
-            <p>System AI z uczeniem maszynowym i pamięcią trwałą</p>
-        </div>
-
+        <h1>System Zaawansowanej Analizy Sportowej</h1>
+        
         <div class="control-panel">
-            <div class="form-group">
-                <label><i class="fas fa-calendar"></i> Data analizy:</label>
-                <input type="date" id="analysisDate" class="form-control">
-            </div>
-
-            <div class="form-group">
-                <label><i class="fas fa-shield-alt"></i> Poziom ryzyka:</label>
-                <select id="riskLevel" class="form-control">
-                    <option value="low">Niski (pewniaki)</option>
-                    <option value="medium" selected>Średni (zbalansowany)</option>
-                    <option value="high">Wysoki (value betting)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label><i class="fas fa-percentage"></i> Minimalna pewność:</label>
-                <input type="range" id="minConfidence" class="form-control" min="0" max="100" value="75">
-                <span id="confidenceValue">75%</span>
-            </div>
+            <input type="date" id="analysisDate">
+            <select id="sportType">
+                <option value="football">Piłka Nożna</option>
+                <option value="basketball">Koszykówka</option>
+                <option value="tennis">Tenis</option>
+            </select>
+            <button onclick="startAnalysis()">Rozpocznij Analizę</button>
         </div>
 
-        <div style="text-align: center;">
-            <button onclick="performAdvancedAnalysis()" class="btn">
-                <i class="fas fa-brain"></i> Analizuj wszystkie mecze
-            </button>
-            <button onclick="refreshData()" class="btn">
-                <i class="fas fa-sync"></i> Odśwież dane
-            </button>
+        <div id="loadingIndicator" style="display: none;">
+            Trwa analiza danych...
         </div>
 
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <h3>⌛ Trwa zaawansowana analiza...</h3>
-            <p>Analizowanie wzorców, motywacji i czynników dodatkowych</p>
-        </div>
-
-        <div id="errorMessage" class="error-message"></div>
-
-        <div id="results" class="analysis-section" style="display:none;">
-            <div class="analysis-card">
-                <h2>🌟 Perełki dnia</h2>
-                <div id="pearlsResults"></div>
-            </div>
-
-            <div class="analysis-card">
-                <h2>📊 Value Betting</h2>
-                <div id="valueBettingResults"></div>
-            </div>
-
-            <div class="analysis-card">
-                <h2>⚠️ Pułapki bukmacherskie</h2>
-                <div id="trapsResults"></div>
-            </div>
-
-            <div class="analysis-card">
-                <h2>📈 Statystyki i predykcje</h2>
-                <div id="statsResults"></div>
-            </div>
-        </div>
+        <div id="results"></div>
     </div>
 
     <script>
-        const API_CONFIG = {
-            url: 'https://v3.football.api-sports.io',
-            headers: {
-                'x-apisports-key': 'ac0417c6e0dcfa236b146b9585892c9a',
-                'Content-Type': 'application/json'
-            }
-        };
+        const API_KEY = 'ac0417c6e0dcfa236b146b9585892c9a';
+        const API_BASE_URL = 'https://api-football-v1.p.rapidapi.com/v3';
 
-        const FullSportsAnalyzer = {
-            async performCompleteAnalysis(date) {
-                showLoading(true);
-                try {
-                    const allSports = await this.fetchAllSportsData(date);
-                    const analysis = await Promise.all(
-                        allSports.map(sport => this.analyzeSportData(sport))
-                    );
-                    const bestBets = this.findBestOpportunities(analysis);
-                    displayAdvancedResults({
-                        pearls: bestBets.slice(0, 5),
-                        valueBets: bestBets.slice(5, 15),
-                        statistics: this.calculateOverallStats(analysis)
-                    });
-                } catch (error) {
-                    showError('Błąd podczas analizy: ' + error.message);
-                } finally {
-                    showLoading(false);
-                }
-            },
+        async function startAnalysis() {
+            showLoading(true);
+            const date = document.getElementById('analysisDate').value;
+            const sportType = document.getElementById('sportType').value;
 
-            async fetchAllSportsData(date) {
-                const sports = ['football', 'basketball', 'tennis', 'hockey', 'volleyball'];
-                return Promise.all(
-                    sports.map(sport => 
-                        fetch(`${API_CONFIG.url}/${sport}/matches?date=${date}`, {
-                            headers: API_CONFIG.headers
-                        }).then(res => res.json())
-                    )
-                );
-            }
-        };
-
-        const PermanentMemory = {
-            storage: {
-                local: window.localStorage,
-                session: window.sessionStorage,
-                memory: new Map()
-            },
-            
-            save(key, data) {
-                this.storage.memory.set(key, data);
-                this.storage.local.setItem(key, JSON.stringify(data));
-                this.storage.session.setItem(key, JSON.stringify(data));
-            },
-            
-            learn(data) {
-                const currentKnowledge = this.getCurrentKnowledge();
-                const newKnowledge = this.mergeKnowledge(currentKnowledge, data);
-                this.save('knowledge', newKnowledge);
-            }
-        };
-
-        async function performAdvancedAnalysis() {
             try {
-                showLoading(true);
-                const date = document.getElementById('analysisDate').value;
-                const fullAnalysis = await FullSportsAnalyzer.performCompleteAnalysis(date);
-                PermanentMemory.learn(fullAnalysis);
-                displayAdvancedResults(fullAnalysis);
+                const analysisData = await performComplexAnalysis(date, sportType);
+                displayResults(analysisData);
             } catch (error) {
-                console.error('Analysis error:', error);
-                showError(error.message);
+                console.error('Błąd analizy:', error);
+                showError('Wystąpił błąd podczas analizy danych');
             } finally {
                 showLoading(false);
             }
         }
 
+        async function performComplexAnalysis(date, sportType) {
+            // Pobieranie danych z API
+            const [fixtures, odds, statistics, teamStats, predictions] = await Promise.all([
+                fetchApiData(`${API_BASE_URL}/fixtures?date=${date}`),
+                fetchApiData(`${API_BASE_URL}/odds/live`),
+                fetchApiData(`${API_BASE_URL}/fixtures/statistics`),
+                fetchApiData(`${API_BASE_URL}/teams/statistics`),
+                fetchApiData(`${API_BASE_URL}/predictions`)
+            ]);
+
+            // Analiza motywacji
+            const motivationAnalysis = analyzeMotivation({
+                fixtures,
+                teamStats,
+                predictions
+            });
+
+            // Analiza taktyczna
+            const tacticalAnalysis = analyzeTactics({
+                fixtures,
+                teamStats,
+                statistics
+            });
+
+            // Wykrywanie pułapek
+            const trapAnalysis = detectTraps({
+                odds,
+                statistics,
+                predictions
+            });
+
+            // Analiza value betting
+            const valueAnalysis = analyzeValue({
+                odds,
+                predictions,
+                statistics
+            });
+
+            return combineAnalysis({
+                motivationAnalysis,
+                tacticalAnalysis,
+                trapAnalysis,
+                valueAnalysis
+            });
+        }
+
+        async function fetchApiData(url) {
+            const response = await fetch(url, {
+                headers: {
+                    'x-rapidapi-key': API_KEY,
+                    'x-rapidapi-host': 'api-football-v1.p.rapidapi.com'
+                }
+            });
+            return await response.json();
+        }
+
+        function analyzeMotivation(data) {
+            return {
+                teamSpirit: calculateTeamSpirit(data),
+                recentForm: analyzeRecentForm(data),
+                playerMotivation: analyzePlayerMotivation(data),
+                seasonObjectives: analyzeSeasonObjectives(data)
+            };
+        }
+
+        function analyzeTactics(data) {
+            return {
+                formationEffectiveness: analyzeFormations(data),
+                playStyle: analyzePlayStyle(data),
+                teamStrengths: analyzeTeamStrengths(data),
+                weaknesses: analyzeWeaknesses(data)
+            };
+        }
+
+        function detectTraps(data) {
+            return {
+                suspiciousOdds: findSuspiciousOdds(data),
+                marketManipulation: detectManipulation(data),
+                oddMovements: analyzeOddMovements(data)
+            };
+        }
+
+        function analyzeValue(data) {
+            return {
+                valueOpportunities: findValueBets(data),
+                marketInefficiencies: findInefficiencies(data),
+                expectedValue: calculateExpectedValue(data)
+            };
+        }
+
+        function combineAnalysis(analyses) {
+            const predictions = [];
+            
+            // Łączenie wszystkich analiz i tworzenie końcowych predykcji
+            for (const match of getUniqueMatches(analyses)) {
+                const prediction = {
+                    match: match,
+                    confidence: calculateConfidence(analyses, match),
+                    recommendedBet: findBestBet(analyses, match),
+                    risk: assessRisk(analyses, match),
+                    value: calculateValue(analyses, match),
+                    reasoning: generateReasoning(analyses, match)
+                };
+
+                if (prediction.confidence > 70 && prediction.value > 1.2) {
+                    predictions.push(prediction);
+                }
+            }
+
+            return predictions;
+        }
+
+        function displayResults(predictions) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            if (predictions.length === 0) {
+                resultsDiv.innerHTML = '<p class="warning">Nie znaleziono wartościowych typów na wybrany dzień.</p>';
+                return;
+            }
+
+            predictions
+                .sort((a, b) => b.confidence - a.confidence)
+                .forEach(pred => {
+                    const card = document.createElement('div');
+                    card.className = `prediction-card ${getConfidenceClass(pred.confidence)}`;
+                    card.innerHTML = `
+                        <h3>${pred.match.homeTeam} vs ${pred.match.awayTeam}</h3>
+                        <div class="stats-container">
+                            <div>
+                                <p><strong>Typ:</strong> ${pred.recommendedBet.type}</p>
+                                <p><strong>Kurs:</strong> ${pred.recommendedBet.odds}</p>
+                                <p><strong>Pewność:</strong> ${pred.confidence}%</p>
+                                <p><strong>Value:</strong> ${pred.value.toFixed(2)}</p>
+                            </div>
+                            <div>
+                                <p><strong>Analiza:</strong></p>
+                                <ul>
+                                    ${pred.reasoning.map(reason => `<li>${reason}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                        ${pred.risk.warnings.length > 0 ? `
+                            <div class="warning">
+                                <p>Ostrzeżenia:</p>
+                                <ul>
+                                    ${pred.risk.warnings.map(w => `<li>${w}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    `;
+                    resultsDiv.appendChild(card);
+                });
+        }
+
+        function getConfidenceClass(confidence) {
+            if (confidence >= 85) return 'high-confidence';
+            if (confidence >= 70) return 'medium-confidence';
+            return 'low-confidence';
+        }
+
         function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
         }
 
         function showError(message) {
-            const errorElement = document.getElementById('errorMessage');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<p class="warning">${message}</p>`;
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const confidenceInput = document.getElementById('minConfidence');
-            const confidenceValue = document.getElementById('confidenceValue');
-            
-            confidenceInput.addEventListener('input', (e) => {
-                confidenceValue.textContent = e.target.value + '%';
-            });
-        });
+        // Funkcje pomocnicze
+        function calculateTeamSpirit(data) {
+            // Implementacja
+        }
+
+        function analyzeRecentForm(data) {
+            // Implementacja
+        }
+
+        function analyzePlayerMotivation(data) {
+            // Implementacja
+        }
+
+        function analyzeSeasonObjectives(data) {
+            // Implementacja
+        }
+
+        function analyzeFormations(data) {
+            // Implementacja
+        }
+
+        function analyzePlayStyle(data) {
+            // Implementacja
+        }
+
+        function analyzeTeamStrengths(data) {
+            // Implementacja
+        }
+
+        function analyzeWeaknesses(data) {
+            // Implementacja
+        }
+
+        function findSuspiciousOdds(data) {
+            // Implementacja
+        }
+
+        function detectManipulation(data) {
+            // Implementacja
+        }
+
+        function analyzeOddMovements(data) {
+            // Implementacja
+        }
+
+        function findValueBets(data) {
+            // Implementacja
+        }
+
+        function findInefficiencies(data) {
+            // Implementacja
+        }
+
+        function calculateExpectedValue(data) {
+            // Implementacja
+        }
+
+        function getUniqueMatches(analyses) {
+            // Implementacja
+        }
+
+        function calculateConfidence(analyses, match) {
+            // Implementacja
+        }
+
+        function findBestBet(analyses, match) {
+            // Implementacja
+        }
+
+        function assessRisk(analyses, match) {
+            // Implementacja
+        }
+
+        function calculateValue(analyses, match) {
+            // Implementacja
+        }
+
+        function generateReasoning(analyses, match) {
+            // Implementacja
+        }
     </script>
 </body>
 </html>
