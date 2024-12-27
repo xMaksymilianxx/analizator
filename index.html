@@ -346,24 +346,28 @@
             loadLearningHistory();
         });
 
+        function initializeEventListeners() {
+            const confidenceSlider = document.getElementById('minConfidence');
+            const confidenceValue = document.getElementById('confidenceValue');
+            
+            confidenceSlider.addEventListener('input', (e) => {
+                confidenceValue.textContent = `${e.target.value}%`;
+            });
+        }
+
+        function setDefaultDate() {
+            const today = new Date();
+            document.getElementById('analysisDate').value = today.toISOString().split('T')[0];
+        }
+
         async function performAdvancedAnalysis() {
             try {
                 showLoading(true);
                 const date = document.getElementById('analysisDate').value;
-                
-                // Pobierz wszystkie mecze z danego dnia
                 const fixtures = await fetchFixtures(date);
-                
-                // Wzbogać dane o dodatkowe informacje
                 const enrichedData = await enrichMatchData(fixtures);
-                
-                // Przeprowadź zaawansowaną analizę
                 const analysis = analyzeWithML(enrichedData);
-                
-                // Zapisz wyniki do historii uczenia
                 updateLearningHistory(analysis);
-                
-                // Wyświetl wyniki
                 displayAdvancedResults(analysis);
             } catch (error) {
                 showError(error.message);
@@ -379,30 +383,62 @@
             
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
+            return data.response || [];
+        }
+
+        async function fetchOdds(fixtureId) {
+            const response = await fetch(`${API_CONFIG.url}/odds/fixture/${fixtureId}`, {
+                headers: API_CONFIG.headers
+            });
             
+            if (!response.ok) return null;
+            const data = await response.json();
+            return data.response[0] || null;
+        }
+
+        async function fetchPredictions(fixtureId) {
+            const response = await fetch(`${API_CONFIG.url}/predictions/fixture/${fixtureId}`, {
+                headers: API_CONFIG.headers
+            });
+            if (!response.ok) return null;
+            const data = await response.json();
+            return data.response[0] || null;
+        }
+
+        async function fetchH2H(team1Id, team2Id) {
+            const response = await fetch(`${API_CONFIG.url}/fixtures/headtohead?h2h=${team1Id}-${team2Id}`, {
+                headers: API_CONFIG.headers
+            });
+            if (!response.ok) return [];
+            const data = await response.json();
             return data.response || [];
         }
 
         async function enrichMatchData(fixtures) {
             return Promise.all(fixtures.map(async fixture => {
-                const [odds, predictions, h2h] = await Promise.all([
-                    fetchOdds(fixture.fixture.id),
-                    fetchPredictions(fixture.fixture.id),
-                    fetchH2H(fixture.teams.home.id, fixture.teams.away.id)
-                ]);
+                try {
+                    const [odds, predictions, h2h] = await Promise.all([
+                        fetchOdds(fixture.fixture.id),
+                        fetchPredictions(fixture.fixture.id),
+                        fetchH2H(fixture.teams.home.id, fixture.teams.away.id)
+                    ]);
 
-                return {
-                    ...fixture,
-                    odds,
-                    predictions,
-                    h2h,
-                    analysis: {
-                        form: calculateTeamForm(fixture, h2h),
-                        motivation: analyzeMotivation(fixture),
-                        valueRating: calculateValueRating(odds),
-                        risk: assessRisk(fixture, odds, predictions)
-                    }
-                };
+                    return {
+                        ...fixture,
+                        odds,
+                        predictions,
+                        h2h,
+                        analysis: {
+                            form: calculateTeamForm(fixture, h2h),
+                            motivation: analyzeMotivation(fixture),
+                            valueRating: calculateValueRating(odds),
+                            risk: assessRisk(fixture, odds, predictions)
+                        }
+                    };
+                } catch (error) {
+                    console.error('Error enriching match data:', error);
+                    return fixture;
+                }
             }));
         }
 
@@ -429,19 +465,24 @@
                 .slice(0, 5);
         }
 
-        function updateLearningHistory(analysis) {
-            learningSystem.history.push({
-                date: new Date(),
-                analysis,
-                performance: calculatePerformance(analysis)
-            });
+        function calculateConfidence(match) {
+            if (!match.odds) return 0;
+            const factors = [
+                calculateValueRating(match) * 0.3,
+                (match.form?.home || 50) * 0.15,
+                (match.form?.away || 50) * 0.15,
+                (match.motivation?.home || 50) * 0.2,
+                (match.motivation?.away || 50) * 0.2
+            ];
+            
+            return Math.min(Math.max(factors.reduce((a, b) => a + b, 0), 0), 100);
+        }
 
-            if (learningSystem.history.length > 100) {
-                learningSystem.history = learningSystem.history.slice(-100);
-            }
-
-            localStorage.setItem('analysisHistory', JSON.stringify(learningSystem.history));
-            optimizeStrategy(learningSystem.history);
+        function calculateValueRating(match) {
+            if (!match.odds?.bookmakers?.[0]?.bets?.[0]?.values) return 0;
+            const odds = match.odds.bookmakers[0].bets[0].values;
+            const impliedProb = odds.reduce((sum, odd) => sum + 1/parseFloat(odd.odd), 0);
+            return Math.max(((1/impliedProb) - 1) * 100, 0);
         }
 
         function displayAdvancedResults(analysis) {
@@ -452,48 +493,6 @@
             displayValueBets(analysis.valueBets);
             displayTraps(analysis.traps);
             displayStatistics(analysis.statistics);
-        }
-
-        function displayPearls(pearls) {
-            const container = document.getElementById('pearlsResults');
-            if (!pearls.length) {
-                container.innerHTML = '<p>Nie znaleziono perełek spełniających kryteria</p>';
-                return;
-            }
-
-            container.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Liga</th>
-                        <th>Typ</th>
-                        <th>Kurs</th>
-                        <th>Pewność</th>
-                        <th>Value</th>
-                    </tr>
-                    ${pearls.map(match => `
-                        <tr>
-                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
-                            <td>${match.league.name}</td>
-                            <td>${getBestBet(match)}</td>
-                            <td>${getBestOdds(match)}</td>
-                            <td>
-                                ${calculateConfidence(match).toFixed(1)}%
-                                <div class="confidence-meter">
-                                    <div class="confidence-level" style="width: ${calculateConfidence(match)}%"></div>
-                                </div>
-                            </td>
-                            <td><span class="pearl-indicator high">+${match.analysis.valueRating.toFixed(1)}%</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-        }
-
-        // Pomocnicze funkcje
-        function setDefaultDate() {
-            const today = new Date();
-            document.getElementById('analysisDate').value = today.toISOString().split('T')[0];
         }
 
         function showLoading(show) {
@@ -510,8 +509,41 @@
         }
 
         function refreshData() {
-            cachedData = {};
             performAdvancedAnalysis();
+        }
+
+        // Symulowane funkcje pomocnicze
+        function calculateTeamForm(fixture, h2h) {
+            return {
+                home: Math.random() * 100,
+                away: Math.random() * 100
+            };
+        }
+
+        function analyzeMotivation(fixture) {
+            return {
+                home: Math.random() * 100,
+                away: Math.random() * 100
+            };
+        }
+
+        function assessRisk(fixture, odds, predictions) {
+            const riskScore = Math.random() * 100;
+            if (riskScore > 75) return 'low';
+            if (riskScore > 50) return 'medium';
+            return 'high';
+        }
+
+        function optimizeStrategy(history) {
+            return learningSystem.currentStrategy;
+        }
+
+        function loadLearningHistory() {
+            // Implementacja ładowania historii
+        }
+
+        function updateLearningHistory(analysis) {
+            // Implementacja aktualizacji historii
         }
     </script>
 </body>
