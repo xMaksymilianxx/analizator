@@ -220,7 +220,6 @@
             </div>
         </div>
     </div>
-
     <script>
         const API_KEY = '631900acd2063f2fa684e2257dfa5588';
         
@@ -240,6 +239,9 @@
         async function loadSports() {
             try {
                 const response = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${API_KEY}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const sports = await response.json();
                 
                 const sportSelect = document.getElementById('sportType');
@@ -258,7 +260,6 @@
             }
         }
 
-        // Emoji dla sportów
         function getSportEmoji(sportGroup) {
             const emojiMap = {
                 'Soccer': '⚽',
@@ -273,12 +274,14 @@
             return emojiMap[sportGroup] || '🎯';
         }
 
-        // Główna funkcja analizy
         async function performCompleteAnalysis() {
+            console.log('Starting analysis...');
             const sportType = document.getElementById('sportType').value;
             const date = document.getElementById('analysisDate').value;
             const leagueType = document.getElementById('leagueType').value;
             const stake = document.getElementById('stakeAmount').value;
+
+            console.log('Selected values:', { sportType, date, leagueType, stake });
 
             if (!sportType || !date || !stake) {
                 showError('Proszę wypełnić wszystkie pola');
@@ -289,34 +292,44 @@
             clearError();
 
             try {
-                // Pobieranie danych z różnych endpointów API
+                console.log('Fetching data...');
                 const [oddsData, scoresData, historicalData] = await Promise.all([
                     getOdds(sportType),
                     getScores(sportType),
                     getHistoricalOdds(sportType, date)
                 ]);
-
-                // Analiza danych
-                const analysis = analyzeData(oddsData, scoresData, historicalData, leagueType, stake);
                 
-                // Wyświetlanie wyników
+                console.log('Data received:', { oddsData, scoresData, historicalData });
+
+                const analysis = analyzeData(oddsData, scoresData, historicalData, leagueType, stake);
+                console.log('Analysis complete:', analysis);
+                
                 displayResults(analysis);
             } catch (error) {
+                console.error('Analysis error:', error);
                 showError('Błąd podczas analizy: ' + error.message);
             } finally {
                 showLoading(false);
             }
         }
 
-        // Pobieranie kursów
         async function getOdds(sport) {
-            const response = await fetch(
-                `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h,spreads`
-            );
-            return await response.json();
+            try {
+                const response = await fetch(
+                    `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h,spreads`
+                );
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Odds data:', data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching odds:', error);
+                throw error;
+            }
         }
 
-        // Pobieranie wyników
         async function getScores(sport) {
             const response = await fetch(
                 `https://api.the-odds-api.com/v4/sports/${sport}/scores/?apiKey=${API_KEY}`
@@ -324,7 +337,6 @@
             return await response.json();
         }
 
-        // Pobieranie historycznych kursów
         async function getHistoricalOdds(sport, date) {
             const response = await fetch(
                 `https://api.the-odds-api.com/v4/sports/${sport}/odds-history/?apiKey=${API_KEY}&date=${date}`
@@ -332,7 +344,20 @@
             return await response.json();
         }
 
-        // Analiza zebranych danych
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function clearError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
         function analyzeData(oddsData, scoresData, historicalData, leagueType, stake) {
             const analysis = {
                 handicaps: analyzeHandicaps(oddsData),
@@ -342,7 +367,6 @@
             return analysis;
         }
 
-        // Analiza handicapów
         function analyzeHandicaps(oddsData) {
             return oddsData.map(match => ({
                 match: `${match.home_team} vs ${match.away_team}`,
@@ -352,7 +376,18 @@
             }));
         }
 
-        // Analiza lig niszowych
+        function calculateHandicap(match) {
+            return match.markets?.find(m => m.key === 'spreads')?.outcomes[0]?.point || 'N/A';
+        }
+
+        function getOptimalOdds(match) {
+            return match.markets?.find(m => m.key === 'h2h')?.outcomes[0]?.price || 'N/A';
+        }
+
+        function generateRecommendation(match) {
+            return 'Analiza w toku';
+        }
+
         function analyzeNicheLeagues(oddsData, leagueType) {
             const leagues = groupByLeague(oddsData);
             return Object.entries(leagues).map(([league, matches]) => ({
@@ -364,31 +399,56 @@
             }));
         }
 
-        // Obliczanie statystyk
+        function groupByLeague(oddsData) {
+            return oddsData.reduce((acc, match) => {
+                const league = match.sport_title || 'Unknown';
+                if (!acc[league]) acc[league] = [];
+                acc[league].push(match);
+                return acc;
+            }, {});
+        }
+
+        function calculateAverageOdds(matches) {
+            if (!matches.length) return 0;
+            const odds = matches.map(m => getOptimalOdds(m)).filter(o => o !== 'N/A');
+            return odds.length ? odds.reduce((a, b) => a + b, 0) / odds.length : 0;
+        }
+
+        function calculateRiskLevel(matches) {
+            const avgOdds = calculateAverageOdds(matches);
+            if (avgOdds > 2.5) return 'High';
+            if (avgOdds > 1.8) return 'Medium';
+            return 'Low';
+        }
+
+        function calculatePotentialProfit(matches) {
+            return Math.round((calculateAverageOdds(matches) - 1) * 100);
+        }
+
         function calculateStatistics(oddsData, historicalData, stake) {
             return {
                 totalMatches: oddsData.length,
                 averageOdds: calculateAverageOdds(oddsData),
-                potentialProfit: calculatePotentialProfit(oddsData, stake),
+                potentialProfit: calculatePotentialProfit(oddsData),
                 riskDistribution: calculateRiskDistribution(oddsData)
             };
         }
 
-        // Wyświetlanie wyników
+        function calculateRiskDistribution(oddsData) {
+            return {
+                low: 0,
+                medium: 0,
+                high: 0
+            };
+        }
+
         function displayResults(analysis) {
             document.getElementById('analysisResults').style.display = 'block';
-            
-            // Wyświetlanie handicapów
             displayHandicaps(analysis.handicaps);
-            
-            // Wyświetlanie lig niszowych
             displayNicheLeagues(analysis.nicheLeagues);
-            
-            // Wyświetlanie statystyk
             displayStatistics(analysis.statistics);
         }
 
-        // Wyświetlanie handicapów
         function displayHandicaps(handicaps) {
             const handicapResults = document.getElementById('handicapResults');
             handicapResults.innerHTML = `
@@ -411,7 +471,6 @@
             `;
         }
 
-        // Wyświetlanie lig niszowych
         function displayNicheLeagues(leagues) {
             const nicheResults = document.getElementById('nicheResults');
             nicheResults.innerHTML = `
@@ -436,8 +495,27 @@
             `;
         }
 
-        // Wyświetlanie statystyk
         function displayStatistics(stats) {
             const statsResults = document.getElementById('statsResults');
             statsResults.innerHTML = `
-                <div class="stats-summary
+                <div class="stats-summary">
+                    <table class="stats-table">
+                        <tr>
+                            <th>Całkowita liczba meczów</th>
+                            <td>${stats.totalMatches}</td>
+                        </tr>
+                        <tr>
+                            <th>Średni kurs</th>
+                            <td>${stats.averageOdds?.toFixed(2) || 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <th>Potencjalny zysk</th>
+                            <td>${stats.potentialProfit}%</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
