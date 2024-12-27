@@ -372,6 +372,90 @@
             }
         }
 
+        async function analyzeMatchData(matchData, options) {
+            const { leagueType, stake, riskLevel } = options;
+
+            // Analiza value betting
+            const valueBets = matchData.filter(match => match.analysis.valueRating > 5)
+                .map(match => ({
+                    match: `${match.home_team} vs ${match.away_team}`,
+                    value: match.analysis.valueRating.toFixed(2),
+                    recommendation: match.analysis.recommendedBet,
+                    confidence: match.analysis.confidence,
+                    risk: match.analysis.risk
+                }));
+
+            // Najlepsze typy
+            const bestBets = matchData.filter(match => match.analysis.confidence > 70)
+                .sort((a, b) => b.analysis.confidence - a.analysis.confidence)
+                .map(match => ({
+                    match: `${match.home_team} vs ${match.away_team}`,
+                    bet: match.analysis.recommendedBet,
+                    confidence: match.analysis.confidence,
+                    expectedValue: match.analysis.expectedValue.toFixed(2)
+                }));
+
+            // Analiza handicapów
+            const handicaps = matchData.filter(match => match.bookmakers?.[0]?.markets?.find(m => m.key === 'spreads'))
+                .map(match => {
+                    const spreadMarket = match.bookmakers[0].markets.find(m => m.key === 'spreads');
+                    return {
+                        match: `${match.home_team} vs ${match.away_team}`,
+                        handicap: spreadMarket.outcomes[0].point,
+                        odds: spreadMarket.outcomes[0].price,
+                        recommendation: match.analysis.recommendedBet,
+                        risk: match.analysis.risk
+                    };
+                });
+
+            // Analiza lig niszowych
+            const nicheLeagues = matchData.reduce((acc, match) => {
+                const league = match.sport_title;
+                if (!acc[league]) {
+                    acc[league] = {
+                        matches: 0,
+                        averageOdds: 0,
+                        totalValue: 0
+                    };
+                }
+                acc[league].matches++;
+                acc[league].averageOdds += match.bookmakers?.[0]?.markets?.[0]?.outcomes?.[0]?.price || 0;
+                acc[league].totalValue += match.analysis.valueRating;
+                return acc;
+            }, {});
+
+            // Statystyki
+            const statistics = {
+                totalMatches: matchData.length,
+                averageConfidence: matchData.reduce((acc, m) => acc + m.analysis.confidence, 0) / matchData.length,
+                totalValue: matchData.reduce((acc, m) => acc + m.analysis.valueRating, 0),
+                riskDistribution: matchData.reduce((acc, m) => {
+                    acc[m.analysis.risk] = (acc[m.analysis.risk] || 0) + 1;
+                    return acc;
+                }, {})
+            };
+
+            // Zarządzanie budżetem
+            const bankroll = {
+                recommendedStake: calculateRecommendedStake(stake, riskLevel),
+                maxExposure: stake * 0.1,
+                riskManagement: generateRiskManagement(stake, riskLevel)
+            };
+
+            return {
+                valueBets,
+                bestBets,
+                handicaps,
+                nicheLeagues: Object.entries(nicheLeagues).map(([league, data]) => ({
+                    name: league,
+                    matches: data.matches,
+                    averageOdds: (data.averageOdds / data.matches).toFixed(2),
+                    valueRating: (data.totalValue / data.matches).toFixed(2)
+                })),
+                statistics,
+                bankroll
+            };
+        }
         function validateInputs(sportType, date, stake) {
             if (!sportType || !date || !stake) {
                 showError('Proszę wypełnić wszystkie pola');
@@ -490,18 +574,171 @@
             return ((1/impliedProb) - 1) * 100;
         }
 
+        function calculateRecommendedStake(stake, riskLevel) {
+            const riskMultiplier = {
+                low: 0.02,
+                medium: 0.05,
+                high: 0.1
+            };
+            return stake * riskMultiplier[riskLevel];
+        }
+
+        function generateRiskManagement(stake, riskLevel) {
+            const maxLoss = stake * {
+                low: 0.1,
+                medium: 0.2,
+                high: 0.3
+            }[riskLevel];
+
+            return {
+                maxLoss,
+                stopLoss: maxLoss * 0.8,
+                targetProfit: maxLoss * 2
+            };
+        }
+
         function displayCompleteAnalysis(analysis) {
             document.getElementById('analysisResults').style.display = 'block';
             
-            displayValueBetting(analysis.valueBets);
-            displayBestBets(analysis.bestBets);
-            displayHandicaps(analysis.handicaps);
-            displayNicheLeagues(analysis.nicheLeagues);
-            displayStatistics(analysis.statistics);
-            displayBankrollManagement(analysis.bankroll);
+            // Wyświetlanie value betting
+            const valueBettingResults = document.getElementById('valueBettingResults');
+            valueBettingResults.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Wartość</th>
+                        <th>Rekomendacja</th>
+                        <th>Pewność</th>
+                        <th>Ryzyko</th>
+                    </tr>
+                    ${analysis.valueBets.map(bet => `
+                        <tr>
+                            <td>${bet.match}</td>
+                            <td class="value-positive">${bet.value}%</td>
+                            <td class="recommendation-strong">${bet.recommendation}</td>
+                            <td>${bet.confidence}%</td>
+                            <td><span class="risk-indicator risk-${bet.risk.toLowerCase()}">${bet.risk}</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+
+            // Wyświetlanie najlepszych typów
+            const bestBetsResults = document.getElementById('bestBetsResults');
+            bestBetsResults.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Typ</th>
+                        <th>Pewność</th>
+                        <th>Oczekiwana wartość</th>
+                    </tr>
+                    ${analysis.bestBets.map(bet => `
+                        <tr>
+                            <td>${bet.match}</td>
+                            <td class="recommendation-strong">${bet.bet}</td>
+                            <td>${bet.confidence}%</td>
+                            <td class="value-positive">${bet.expectedValue}%</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+
+            // Wyświetlanie handicapów
+            const handicapResults = document.getElementById('handicapResults');
+            handicapResults.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Handicap</th>
+                        <th>Kurs</th>
+                        <th>Rekomendacja</th>
+                        <th>Ryzyko</th>
+                    </tr>
+                    ${analysis.handicaps.map(h => `
+                        <tr>
+                            <td>${h.match}</td>
+                            <td>${h.handicap}</td>
+                            <td>${h.odds}</td>
+                            <td>${h.recommendation}</td>
+                            <td><span class="risk-indicator risk-${h.risk.toLowerCase()}">${h.risk}</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+
+            // Wyświetlanie lig niszowych
+            const nicheResults = document.getElementById('nicheResults');
+            nicheResults.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Liga</th>
+                        <th>Liczba meczów</th>
+                        <th>Średni kurs</th>
+                        <th>Wartość</th>
+                    </tr>
+                    ${analysis.nicheLeagues.map(league => `
+                        <tr>
+                            <td>${league.name}</td>
+                            <td>${league.matches}</td>
+                            <td>${league.averageOdds}</td>
+                            <td class="value-positive">${league.valueRating}%</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
+
+            // Wyświetlanie statystyk
+            const statsResults = document.getElementById('statsResults');
+            statsResults.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Parametr</th>
+                        <th>Wartość</th>
+                    </tr>
+                    <tr>
+                        <td>Liczba analizowanych meczów</td>
+                        <td>${analysis.statistics.totalMatches}</td>
+                    </tr>
+                    <tr>
+                        <td>Średnia pewność typów</td>
+                        <td>${analysis.statistics.averageConfidence.toFixed(1)}%</td>
+                    </tr>
+                    <tr>
+                        <td>Całkowita wartość</td>
+                        <td class="value-positive">${analysis.statistics.totalValue.toFixed(2)}%</td>
+                    </tr>
+                </table>
+            `;
+
+            // Wyświetlanie zarządzania budżetem
+            const bankrollResults = document.getElementById('bankrollResults');
+            bankrollResults.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Parametr</th>
+                        <th>Wartość</th>
+                    </tr>
+                    <tr>
+                        <td>Zalecana stawka na zakład</td>
+                        <td>${analysis.bankroll.recommendedStake.toFixed(2)} PLN</td>
+                    </tr>
+                    <tr>
+                        <td>Maksymalna ekspozycja</td>
+                        <td>${analysis.bankroll.maxExposure.toFixed(2)} PLN</td>
+                    </tr>
+                    <tr>
+                        <td>Stop loss</td>
+                        <td>${analysis.bankroll.riskManagement.stopLoss.toFixed(2)} PLN</td>
+                    </tr>
+                    <tr>
+                        <td>Cel zysku</td>
+                        <td class="value-positive">${analysis.bankroll.riskManagement.targetProfit.toFixed(2)} PLN</td>
+                    </tr>
+                </table>
+            `;
         }
 
-        // Funkcje pomocnicze do wyświetlania
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
