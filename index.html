@@ -27,7 +27,6 @@
             --gradient-warning: linear-gradient(135deg, #FFC107, #FFA000);
             --gradient-danger: linear-gradient(135deg, #F44336, #D32F2F);
         }
-
         * {
             margin: 0;
             padding: 0;
@@ -45,26 +44,6 @@
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
-        }
-
-        .dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: var(--shadow-md);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-lg);
         }
 
         .header {
@@ -153,7 +132,6 @@
             background: linear-gradient(135deg, #1976D2, #1565C0);
             box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
         }
-
         .analysis-section {
             margin-top: 30px;
             display: none;
@@ -276,16 +254,6 @@
             transition: width 0.3s ease;
         }
 
-        .pearl-indicator {
-            background: linear-gradient(135deg, #FFD700, #FFA000);
-            color: var(--dark-color);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 500;
-            font-size: 12px;
-            margin-left: 8px;
-        }
-
         .motivation-high {
             color: var(--success-color);
             font-weight: 500;
@@ -390,14 +358,7 @@
 
         <div id="errorMessage" class="error-message"></div>
 
-        
-<div style="text-align: center; margin-bottom: 20px;">
-    <button id="analyzeAllButton" class="btn btn-primary">
-        <i class="fas fa-layer-group"></i> Analizuj wszystkie typy i sporty
-    </button>
-</div>
-
-<div id="analysisResults" class="analysis-section">
+        <div id="analysisResults" class="analysis-section">
             <div class="analysis-card">
                 <h2><i class="fas fa-star"></i> Perełki dnia</h2>
                 <div id="pearlsResults"></div>
@@ -447,48 +408,25 @@
         let globalAnalysis = {
             bestBets: [],
             topOpportunities: [],
-            pearls: [] // Najlepsze okazje
+            pearls: []
         };
         
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadSports();
-            setDefaultDate();
-            initializeCache();
-            await analyzeAllSports();
-            
-            setInterval(async () => {
+            try {
+                await loadSports();
+                setDefaultDate();
+                initializeCache();
                 await analyzeAllSports();
-                updateLastRefreshTime();
-            }, AUTO_REFRESH_INTERVAL);
+                
+                setInterval(async () => {
+                    await analyzeAllSports();
+                    updateLastRefreshTime();
+                }, AUTO_REFRESH_INTERVAL);
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Błąd podczas inicjalizacji: ' + error.message);
+            }
         });
-
-        function setDefaultDate() {
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('analysisDate').value = tomorrow.toISOString().split('T')[0];
-        }
-
-        function updateLastRefreshTime() {
-            const now = new Date();
-            if (document.getElementById('lastUpdate')) {
-        document.getElementById('lastUpdate').textContent =
-    } else {
-        console.error('Last update container not found.');
-    } 
-                `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
-        }
-
-        function initializeCache() {
-            setInterval(() => {
-                const now = Date.now();
-                Object.keys(cachedData).forEach(key => {
-                    if (now - cachedData[key].timestamp > CACHE_DURATION) {
-                        delete cachedData[key];
-                    }
-                });
-            }, CACHE_DURATION);
-        }
 
         async function loadSports() {
             try {
@@ -497,8 +435,9 @@
                 const sports = await response.json();
                 
                 const sportSelect = document.getElementById('sportType');
-                sportSelect.innerHTML = '';
+                if (!sportSelect) throw new Error('Sport select element not found');
                 
+                sportSelect.innerHTML = '';
                 sports
                     .filter(sport => sport.active)
                     .sort((a, b) => a.title.localeCompare(b.title))
@@ -509,7 +448,7 @@
                         sportSelect.appendChild(option);
                     });
             } catch (error) {
-                showError('Błąd podczas ładowania sportów: ' + error.message);
+                throw new Error('Błąd podczas ładowania sportów: ' + error.message);
             }
         }
 
@@ -527,300 +466,204 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 
-                // Filtrowanie po dacie
                 const selectedDate = document.getElementById('analysisDate').value;
                 const filteredData = data.filter(match => {
                     const matchDate = new Date(match.commence_time).toISOString().split('T')[0];
                     return matchDate === selectedDate;
                 });
 
-                // Wzbogacanie danych o dodatkowe analizy
-                const enrichedData = filteredData.map(match => ({
-                    ...match,
-                    motivation: analyzeMotivation(match),
-                    injuries: analyzeInjuries(match),
-                    weatherImpact: analyzeWeatherImpact(match),
-                    historicalAnalysis: analyzeHistoricalData(match),
-                    valueAnalysis: calculateValueBetting(match)
-                }));
-
                 cachedData[cacheKey] = {
-                    data: enrichedData,
+                    data: filteredData,
                     timestamp: Date.now()
                 };
                 
-                return enrichedData;
+                return filteredData;
             } catch (error) {
-                console.error('Error fetching match data:', error);
-                throw error;
+                throw new Error('Error fetching match data: ' + error.message);
             }
         }
 
-        function analyzeMotivation(match) {
-            // Zaawansowana analiza motywacji
-            const factors = {
-                leaguePosition: calculateLeaguePosition(match),
-                recentForm: analyzeRecentForm(match),
-                headToHead: analyzeH2H(match),
-                keyPlayersAvailable: checkKeyPlayers(match),
-                upcomingMatches: analyzeSchedule(match)
-            };
-
-            const motivationScore = Object.values(factors).reduce((acc, val) => acc + val, 0) / 5;
-            
-            return {
-                score: motivationScore,
-                factors: factors,
-                level: getMotivationLevel(motivationScore)
-            };
-        }
-
-        function calculateLeaguePosition(match) {
-            // Implementacja analizy pozycji w lidze
-            return Math.random() * 100;
-        }
-
-        function analyzeRecentForm(match) {
-            // Analiza ostatnich wyników
-            return Math.random() * 100;
-        }
-
-        function analyzeH2H(match) {
-            // Analiza historii spotkań
-            return Math.random() * 100;
-        }
-
-        function checkKeyPlayers(match) {
-            // Sprawdzanie dostępności kluczowych zawodników
-            return Math.random() * 100;
-        }
-
-        function analyzeSchedule(match) {
-            // Analiza terminarza
-            return Math.random() * 100;
-        }
-
-        function getMotivationLevel(score) {
-            if (score >= 80) return 'Bardzo wysoka';
-            if (score >= 60) return 'Wysoka';
-            if (score >= 40) return 'Średnia';
-            return 'Niska';
-        }
-        async function analyzeAllSports() {
-            showLoading(true);
-            clearError();
-            
+        async function analyzeMatchData(matchData, options) {
             try {
-                const response = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${API_KEY}`);
-                const sports = await response.json();
-                const activeSports = sports.filter(sport => sport.active);
+                const { leagueType, stake, riskLevel, analysisDepth } = options;
 
-                let allAnalysis = [];
-                
-                const analysisPromises = activeSports.map(async sport => {
-                    try {
-                        const matchData = await fetchMatchData(sport.key);
-                        const analysis = await analyzeMatchData(matchData, {
-                            leagueType: 'all',
-                            stake: 100,
-                            riskLevel: document.getElementById('riskLevel').value,
-                            analysisDepth: document.getElementById('analysisDepth').value
-                        });
-                        
-                        return {
-                            sport: sport.title,
-                            sportKey: sport.key,
-                            analysis
-                        };
-                    } catch (error) {
-                        console.error(`Error analyzing ${sport.title}:`, error);
-                        return null;
-                    }
-                });
+                const enrichedData = await Promise.all(matchData.map(async match => ({
+                    ...match,
+                    motivation: await analyzeMotivation(match),
+                    injuries: await analyzeInjuries(match),
+                    weather: await analyzeWeatherImpact(match),
+                    history: await analyzeHistoricalData(match),
+                    valueRating: calculateValueRating(match)
+                })));
 
-                const results = await Promise.all(analysisPromises);
-                globalAnalysis = combineAndFilterBestBets(results.filter(Boolean));
-                displayGlobalAnalysis(globalAnalysis);
-                updateLastRefreshTime();
+                return {
+                    valueBets: findValueBets(enrichedData),
+                    bestBets: findBestBets(enrichedData),
+                    handicaps: analyzeHandicaps(enrichedData),
+                    statistics: calculateStatistics(enrichedData, stake)
+                };
             } catch (error) {
-                console.error('Error in global analysis:', error);
-                showError('Błąd podczas globalnej analizy: ' + error.message);
-            } finally {
-                showLoading(false);
+                throw new Error('Error analyzing match data: ' + error.message);
             }
         }
 
-        function combineAndFilterBestBets(allSportsAnalysis) {
-            let combinedBets = [];
-            let topOpportunities = [];
-            let pearls = [];
-
-            allSportsAnalysis.forEach(sportAnalysis => {
-                if (!sportAnalysis || !sportAnalysis.analysis || !sportAnalysis.analysis.valueBets) return;
-                
-                const { sport, analysis } = sportAnalysis;
-
-                // Znajdź najlepsze zakłady
-                const bestBets = analysis.valueBets
-                    .filter(bet => bet.confidence > 75 && bet.value > 10)
-                    .map(bet => ({
-                        ...bet,
-                        sport,
-                        rating: calculateBetRating(bet)
-                    }));
-
-                combinedBets.push(...bestBets);
-
-                // Znajdź perełki (wyjątkowe okazje)
-                const sportPearls = analysis.valueBets
-                    .filter(bet => 
-                        bet.confidence > 85 && 
-                        bet.value > 15 && 
-                        bet.motivation.score > 80 &&
-                        bet.additionalFactors.injuries.risk === 'Low'
-                    )
-                    .map(bet => ({
-                        ...bet,
-                        sport,
-                        rating: calculatePearlRating(bet)
-                    }));
-
-                pearls.push(...sportPearls);
-
-                // Znajdź najlepsze okazje value betting
-                const opportunities = analysis.valueBets
-                    .filter(bet => bet.value > 15)
-                    .map(bet => ({
-                        ...bet,
-                        sport,
-                        rating: calculateValueRating(bet)
-                    }));
-
-                topOpportunities.push(...opportunities);
-            });
-
-            // Sortuj wszystkie znalezione zakłady
-            combinedBets.sort((a, b) => b.rating - a.rating);
-            pearls.sort((a, b) => b.rating - a.rating);
-            topOpportunities.sort((a, b) => b.value - a.value);
-
-            return {
-                bestBets: combinedBets.slice(0, 10),     // Top 10 najlepszych zakładów
-                pearls: pearls.slice(0, 3),              // Top 3 perełki
-                topOpportunities: topOpportunities.slice(0, 5) // Top 5 okazji value betting
-            };
+        // Funkcje pomocnicze do analizy
+        function findValueBets(matches) {
+            return matches
+                .filter(match => match.valueRating > 5)
+                .map(match => ({
+                    match: `${match.home_team} vs ${match.away_team}`,
+                    value: match.valueRating,
+                    confidence: calculateConfidence(match),
+                    risk: assessRisk(match),
+                    recommendation: generateRecommendation(match)
+                }))
+                .sort((a, b) => b.value - a.value);
         }
 
-        function calculateBetRating(bet) {
-            const weights = {
-                value: 0.3,
-                confidence: 0.3,
-                motivation: 0.2,
-                risk: 0.2
-            };
+        function findBestBets(matches) {
+            return matches
+                .filter(match => calculateConfidence(match) > 75)
+                .map(match => ({
+                    match: `${match.home_team} vs ${match.away_team}`,
+                    recommendation: generateRecommendation(match),
+                    confidence: calculateConfidence(match),
+                    motivation: match.motivation,
+                    risk: assessRisk(match)
+                }))
+                .sort((a, b) => b.confidence - a.confidence);
+        }
 
-            const riskScore = {
-                'Low': 1,
-                'Medium': 0.7,
-                'High': 0.4,
-                'Very High': 0.2
-            }[bet.risk] || 0.5;
+        function calculateValueRating(match) {
+            // Implementacja obliczania wartości zakładu
+            const markets = match.bookmakers?.[0]?.markets || [];
+            const h2hMarket = markets.find(m => m.key === 'h2h');
+            if (!h2hMarket) return 0;
 
-            const motivationScore = bet.motivation.score / 100;
+            const homeOdds = h2hMarket.outcomes.find(o => o.name === match.home_team)?.price || 0;
+            const awayOdds = h2hMarket.outcomes.find(o => o.name === match.away_team)?.price || 0;
 
-            return (
-                (bet.value * weights.value) +
-                (bet.confidence * weights.confidence) +
-                (motivationScore * 100 * weights.motivation) +
-                (riskScore * 100 * weights.risk)
+            if (!homeOdds || !awayOdds) return 0;
+
+            const impliedProb = (1/homeOdds + 1/awayOdds);
+            return ((1/impliedProb) - 1) * 100;
+        }
+
+        function calculateConfidence(match) {
+            // Implementacja obliczania pewności typu
+            return Math.min(
+                match.valueRating * 0.4 +
+                match.motivation.score * 0.3 +
+                (100 - match.injuries.risk * 20) * 0.2 +
+                match.history.reliability * 0.1,
+                100
             );
         }
 
-        function calculatePearlRating(bet) {
-            const baseRating = calculateBetRating(bet);
-            const additionalFactors = [
-                bet.additionalFactors.injuries.risk === 'Low' ? 20 : 0,
-                bet.additionalFactors.weatherImpact.impact < 30 ? 10 : 0,
-                bet.additionalFactors.historicalData.reliability > 70 ? 15 : 0
-            ];
+        function assessRisk(match) {
+            // Implementacja oceny ryzyka
+            const riskScore = 
+                match.injuries.risk * 0.4 +
+                match.weather.impact * 0.2 +
+                (100 - match.history.reliability) * 0.4;
 
-            return baseRating + additionalFactors.reduce((a, b) => a + b, 0);
+            if (riskScore > 75) return 'Very High';
+            if (riskScore > 50) return 'High';
+            if (riskScore > 25) return 'Medium';
+            return 'Low';
         }
 
-        function calculateValueRating(bet) {
-            return bet.value * (bet.confidence / 100) * (1 + bet.motivation.score / 100);
+        function generateRecommendation(match) {
+            // Implementacja generowania rekomendacji
+            const markets = match.bookmakers?.[0]?.markets || [];
+            const h2hMarket = markets.find(m => m.key === 'h2h');
+            if (!h2hMarket) return 'Brak danych';
+
+            const homeOdds = h2hMarket.outcomes.find(o => o.name === match.home_team)?.price;
+            const awayOdds = h2hMarket.outcomes.find(o => o.name === match.away_team)?.price;
+
+            if (homeOdds > awayOdds) return `Home (${homeOdds})`;
+            return `Away (${awayOdds})`;
         }
         function displayGlobalAnalysis(globalAnalysis) {
-            const globalResults = document.getElementById('globalAnalysisResults');
-            globalResults.innerHTML = `
-                <h2><i class="fas fa-star"></i> Perełki dnia</h2>
-                <table class="stats-table">
-                    <tr>
-                        <th>Sport</th>
-                        <th>Mecz</th>
-                        <th>Typ</th>
-                        <th>Wartość</th>
-                        <th>Pewność</th>
-                        <th>Motywacja</th>
-                        <th>Ryzyko</th>
-                    </tr>
-                    ${globalAnalysis.pearls.map(bet => `
-                        <tr>
-                            <td>${bet.sport}</td>
-                            <td>${bet.match}</td>
-                            <td class="recommendation-strong">${bet.recommendation}</td>
-                            <td class="value-positive">${bet.value.toFixed(2)}%</td>
-                            <td>
-                                ${bet.confidence}%
-                                <div class="confidence-bar">
-                                    <div class="confidence-level" style="width: ${bet.confidence}%"></div>
-                                </div>
-                            </td>
-                            <td class="motivation-${bet.motivation.level.toLowerCase()}">${bet.motivation.level}</td>
-                            <td><span class="risk-indicator risk-${bet.risk.toLowerCase()}">${bet.risk}</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
+            try {
+                const globalResults = document.getElementById('globalAnalysisResults');
+                if (!globalResults) {
+                    throw new Error('Element globalAnalysisResults not found');
+                }
 
-                <h3><i class="fas fa-chart-line"></i> Najlepsze okazje value betting</h3>
-                <table class="stats-table">
-                    <tr>
-                        <th>Sport</th>
-                        <th>Mecz</th>
-                        <th>Wartość</th>
-                        <th>Rekomendacja</th>
-                        <th>Czynniki dodatkowe</th>
-                    </tr>
-                    ${globalAnalysis.topOpportunities.map(opp => `
+                globalResults.innerHTML = `
+                    <h2><i class="fas fa-star"></i> Najlepsze typy ze wszystkich sportów</h2>
+                    <table class="stats-table">
                         <tr>
-                            <td>${opp.sport}</td>
-                            <td>${opp.match}</td>
-                            <td class="value-positive">${opp.value.toFixed(2)}%</td>
-                            <td class="recommendation-strong">${opp.recommendation}</td>
-                            <td>
-                                ${opp.additionalFactors ? `
-                                    Kontuzje: ${opp.additionalFactors.injuries.risk}<br>
-                                    Pogoda: ${opp.additionalFactors.weatherImpact.condition}
-                                ` : 'Brak danych'}
-                            </td>
+                            <th>Sport</th>
+                            <th>Mecz</th>
+                            <th>Typ</th>
+                            <th>Wartość</th>
+                            <th>Pewność</th>
+                            <th>Ryzyko</th>
                         </tr>
-                    `).join('')}
-                </table>
-            `;
+                        ${globalAnalysis.bestBets.map(bet => `
+                            <tr>
+                                <td>${bet.sport}</td>
+                                <td>${bet.match}</td>
+                                <td class="recommendation-strong">${bet.recommendation}</td>
+                                <td class="value-positive">${bet.value.toFixed(2)}%</td>
+                                <td>
+                                    ${bet.confidence}%
+                                    <div class="confidence-bar">
+                                        <div class="confidence-level" style="width: ${bet.confidence}%"></div>
+                                    </div>
+                                </td>
+                                <td><span class="risk-indicator risk-${bet.risk.toLowerCase()}">${bet.risk}</span></td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                `;
+
+                updateSectionContent('valueBettingResults', globalAnalysis.valueBets);
+                updateSectionContent('bestBetsResults', globalAnalysis.bestBets);
+                updateSectionContent('handicapResults', globalAnalysis.handicaps);
+                updateLastRefreshTime();
+            } catch (error) {
+                console.error('Error in displayGlobalAnalysis:', error);
+                showError('Błąd podczas wyświetlania analizy: ' + error.message);
+            }
+        }
+
+        function updateSectionContent(sectionId, data) {
+            const section = document.getElementById(sectionId);
+            if (!section) return;
+
+            if (!data || data.length === 0) {
+                section.innerHTML = '<p>Brak dostępnych danych dla tej sekcji</p>';
+                return;
+            }
+
+            section.innerHTML = generateSectionContent(sectionId, data);
         }
 
         function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.style.display = show ? 'block' : 'none';
+            }
         }
 
         function clearError() {
-            document.getElementById('errorMessage').style.display = 'none';
+            const errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.style.display = 'none';
+            }
         }
 
         function showError(message) {
+            console.error('Error:', message);
             const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
         }
 
         function getSportEmoji(sportGroup) {
@@ -840,150 +683,6 @@
             };
             return emojiMap[sportGroup] || '🎯';
         }
-        function displayCompleteAnalysis(analysis) {
-            document.getElementById('analysisResults').style.display = 'block';
-            
-            // Wyświetlanie value betting
-            const valueBettingResults = document.getElementById('valueBettingResults');
-            valueBettingResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Wartość</th>
-                        <th>Rekomendacja</th>
-                        <th>Pewność</th>
-                        <th>Ryzyko</th>
-                        <th>Motywacja</th>
-                    </tr>
-                    ${analysis.valueBets.map(bet => `
-                        <tr>
-                            <td>${bet.match}</td>
-                            <td class="value-positive">${bet.value.toFixed(2)}%</td>
-                            <td class="recommendation-strong">${bet.recommendation}</td>
-                            <td>
-                                ${bet.confidence}%
-                                <div class="confidence-bar">
-                                    <div class="confidence-level" style="width: ${bet.confidence}%"></div>
-                                </div>
-                            </td>
-                            <td><span class="risk-indicator risk-${bet.risk.toLowerCase()}">${bet.risk}</span></td>
-                            <td class="motivation-${bet.motivation.level.toLowerCase()}">${bet.motivation.level}</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-
-            // Wyświetlanie statystyk
-            const statsResults = document.getElementById('statsResults');
-            statsResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Parametr</th>
-                        <th>Wartość</th>
-                    </tr>
-                    <tr>
-                        <td>Liczba analizowanych meczów</td>
-                        <td>${analysis.statistics.totalMatches}</td>
-                    </tr>
-                    <tr>
-                        <td>Średnia pewność typów</td>
-                        <td>${analysis.statistics.averageConfidence.toFixed(1)}%</td>
-                    </tr>
-                </table>
-            `;
-
-            // Wyświetlanie zarządzania budżetem
-            const bankrollResults = document.getElementById('bankrollResults');
-            bankrollResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Parametr</th>
-                        <th>Wartość</th>
-                    </tr>
-                    <tr>
-                        <td>Zalecana stawka na zakład</td>
-                        <td>${(analysis.statistics.totalMatches * 2).toFixed(2)} PLN</td>
-                    </tr>
-                    <tr>
-                        <td>Maksymalna ekspozycja</td>
-                        <td>${(analysis.statistics.totalMatches * 5).toFixed(2)} PLN</td>
-                    </tr>
-                </table>
-            `;
-        }
-    
-document.addEventListener('DOMContentLoaded', function () {
-    const analyzeAllButton = document.getElementById('analyzeAllButton');
-    if (analyzeAllButton) {
-        analyzeAllButton.addEventListener('click', function () {
-            analyzeAllSportsAndTypes();
-        });
-    } else {
-        console.error('Przycisk analizy wszystkich typów i sportów nie został znaleziony.');
-    }
-});
-
-async function analyzeAllSportsAndTypes() {
-    showLoading(true);
-    try {
-        alert('Rozpoczynam zaawansowaną analizę wszystkich typów i sportów...');
-        // Pobieranie danych dla wszystkich sportów
-        const sportsData = await fetchAllSportsData();
-        const analysisResults = sportsData.map(analyzeSportData);
-        displayAdvancedAnalysisResults(analysisResults);
-    } catch (error) {
-        console.error('Błąd podczas analizy:', error);
-        showError('Błąd podczas zaawansowanej analizy: ' + error.message);
-    } finally {
-        showLoading(false);
-    }
-}
-
-async function fetchAllSportsData() {
-    // Placeholder - tutaj można zintegrować API do pobierania danych
-    return [
-        { sport: 'Piłka nożna', data: [] },
-        { sport: 'Koszykówka', data: [] },
-    ];
-}
-
-function analyzeSportData(sportData) {
-    // Przykładowa logika analizy sportu
-    return {
-        sport: sportData.sport,
-        bestBets: [
-            { match: 'Team A vs Team B', confidence: 95, value: 20 },
-            { match: 'Team C vs Team D', confidence: 92, value: 18 },
-        ],
-    };
-}
-
-function displayAdvancedAnalysisResults(results) {
-    const analysisContainer = document.getElementById('analysisResults');
-    if (!analysisContainer) {
-        console.error('Kontener wyników analizy nie został znaleziony.');
-        return;
-    }
-    analysisContainer.style.display = 'block';
-    analysisContainer.innerHTML = results.map(result => `
-        <h2>${result.sport}</h2>
-        <table class="stats-table">
-            <tr>
-                <th>Mecz</th>
-                <th>Pewność</th>
-                <th>Wartość</th>
-            </tr>
-            ${result.bestBets.map(bet => `
-                <tr>
-                    <td>${bet.match}</td>
-                    <td>${bet.confidence}%</td>
-                    <td>${bet.value}%</td>
-                </tr>
-            `).join('')}
-        </table>
-    `).join('');
-}
-
-</script>
+    </script>
 </body>
 </html>
