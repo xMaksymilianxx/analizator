@@ -47,6 +47,7 @@
             text-align: center;
             box-shadow: var(--shadow);
         }
+
         .control-panel {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -287,6 +288,7 @@
             </div>
         </div>
     </div>
+
     <script>
         const API_CONFIG = {
             url: 'https://api-football-v1.rapidapi.com/v2',
@@ -295,9 +297,17 @@
                 'x-rapidapi-key': 'cae91aebdemsh34aeee667655c55p10476djsn8ecef9041e01'
             }
         };
+
+        const DEFAULT_LEAGUES = [
+            {id: 39, name: "Premier League"},
+            {id: 140, name: "La Liga"},
+            {id: 135, name: "Serie A"},
+            {id: 78, name: "Bundesliga"},
+            {id: 61, name: "Ligue 1"},
+            {id: 106, name: "Eredivisie"}
+        ];
         
         let cachedData = {};
-        
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await loadLeagues();
@@ -322,23 +332,10 @@
 
         async function loadLeagues() {
             try {
-                const response = await fetch(`${API_CONFIG.url}/leagues`, {
-                    headers: API_CONFIG.headers
-                });
-                
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                const data = await response.json();
-                if (!data.api || !data.api.leagues) {
-                    throw new Error('Nieprawidłowa odpowiedź API');
-                }
-
                 const leagueSelect = document.getElementById('leagueSelect');
-                leagueSelect.innerHTML = data.api.leagues
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map(league => `<option value="${league.league_id}">${league.name} (${league.country})</option>`)
+                leagueSelect.innerHTML = DEFAULT_LEAGUES
+                    .map(league => `<option value="${league.id}">${league.name}</option>`)
                     .join('');
-                    
             } catch (error) {
                 showError('Błąd podczas ładowania lig: ' + error.message);
             }
@@ -369,12 +366,19 @@
                 }
 
                 const response = await fetch(`${API_CONFIG.url}/odds/league/${leagueId}/bookmaker/5`, {
-                    headers: API_CONFIG.headers
+                    headers: API_CONFIG.headers,
+                    mode: 'cors'
                 });
                 
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
+                if (response.status === 429) {
+                    throw new Error('Przekroczono limit zapytań API. Spróbuj ponownie później.');
+                }
                 
+                if (!response.ok) {
+                    throw new Error(`Błąd HTTP: ${response.status}`);
+                }
+
+                const data = await response.json();
                 if (!data.api || !data.api.odds) {
                     throw new Error('Nieprawidłowa odpowiedź API');
                 }
@@ -385,6 +389,7 @@
                 throw new Error('Błąd pobierania kursów: ' + error.message);
             }
         }
+
         async function enrichMatchData(matchData) {
             return Promise.all(matchData.map(async match => {
                 const enriched = {
@@ -473,6 +478,143 @@
         function refreshData() {
             cachedData = {};
             performAdvancedAnalysis();
+        }
+
+        // Pomocnicze funkcje symulujące pobieranie danych
+        async function fetchWeatherData(match) {
+            return {
+                temperature: Math.round(Math.random() * 25 + 5),
+                conditions: ['Sunny', 'Cloudy', 'Rain', 'Wind'][Math.floor(Math.random() * 4)],
+                impact: Math.random() * 100
+            };
+        }
+
+        async function fetchInjuriesData(match) {
+            return {
+                homeTeam: Math.floor(Math.random() * 3),
+                awayTeam: Math.floor(Math.random() * 3),
+                keyPlayers: Math.random() > 0.7,
+                impact: Math.random() * 100
+            };
+        }
+
+        async function fetchH2HData(match) {
+            return {
+                lastMatches: Array(5).fill(0).map(() => ({
+                    result: `${Math.floor(Math.random() * 4)}-${Math.floor(Math.random() * 4)}`,
+                    date: new Date(Date.now() - Math.random() * 31536000000).toISOString()
+                })),
+                homeAdvantage: Math.random() * 100
+            };
+        }
+
+        function calculateTeamForm(match) {
+            return {
+                home: Math.random() * 100,
+                away: Math.random() * 100,
+                trend: ['Improving', 'Stable', 'Declining'][Math.floor(Math.random() * 3)]
+            };
+        }
+
+        function analyzeMotivation(match) {
+            return {
+                home: Math.random() * 100,
+                away: Math.random() * 100,
+                factors: {
+                    position: Math.random() * 100,
+                    importance: Math.random() * 100,
+                    rivalry: Math.random() * 100
+                }
+            };
+        }
+
+        function calculateValueRating(match) {
+            const odds = match.bookmakers?.[0]?.bets?.[0]?.values || [];
+            if (odds.length < 2) return 0;
+
+            const impliedProb = odds.reduce((sum, odd) => sum + 1/parseFloat(odd), 0);
+            return ((1/impliedProb) - 1) * 100;
+        }
+
+        function calculateConfidence(match) {
+            const factors = [
+                match.valueRating * 0.3,
+                match.form.home * 0.15,
+                match.form.away * 0.15,
+                match.motivation.home * 0.2,
+                match.motivation.away * 0.2
+            ];
+            
+            return Math.min(factors.reduce((a, b) => a + b, 0), 100);
+        }
+
+        function calculateStatistics(matches) {
+            // Implementacja obliczania statystyk
+            return {};
+        }
+
+        function displayPearls(pearls) {
+            const container = document.getElementById('pearlsResults');
+            if (!pearls.length) {
+                container.innerHTML = '<p>Nie znaleziono perełek spełniających kryteria</p>';
+                return;
+            }
+
+            container.innerHTML = generateTableHTML(pearls, ['Mecz', 'Typ', 'Kurs', 'Pewność', 'Ryzyko']);
+        }
+
+        function displayValueBets(valueBets) {
+            const container = document.getElementById('valueBettingResults');
+            if (!valueBets.length) {
+                container.innerHTML = '<p>Nie znaleziono wartościowych typów</p>';
+                return;
+            }
+
+            container.innerHTML = generateTableHTML(valueBets, ['Mecz', 'Rynek', 'Wartość', 'Kurs']);
+        }
+
+        function displayTraps(traps) {
+            const container = document.getElementById('trapsResults');
+            if (!traps.length) {
+                container.innerHTML = '<p>Nie wykryto podejrzanych kursów</p>';
+                return;
+            }
+
+            container.innerHTML = generateTableHTML(traps, ['Mecz', 'Powód', 'Ryzyko']);
+        }
+
+        function displayStatistics(statistics) {
+            const container = document.getElementById('statsResults');
+            container.innerHTML = '<p>Statystyki w przygotowaniu...</p>';
+        }
+
+        function generateTableHTML(data, headers) {
+            return `
+                <table class="stats-table">
+                    <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    ${data.map(item => `
+                        <tr>${generateTableRow(item, headers)}</tr>
+                    `).join('')}
+                </table>
+            `;
+        }
+
+        function generateTableRow(item, headers) {
+            return headers.map(header => {
+                const value = getValueForHeader(item, header);
+                return `<td>${formatValue(value, header)}</td>`;
+            }).join('');
+        }
+
+        function getValueForHeader(item, header) {
+            return item[header.toLowerCase()] || '-';
+        }
+
+        function formatValue(value, type) {
+            if (typeof value === 'number') {
+                return value.toFixed(2);
+            }
+            return value;
         }
     </script>
 </body>
