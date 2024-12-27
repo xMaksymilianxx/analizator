@@ -322,10 +322,9 @@
 
     <script>
         const API_CONFIG = {
-            url: 'https://v3.football.api-sports.io',
-            key: 'ac0417c6e0dcfa236b146b9585892c9a',
+            url: 'https://api-football-v1.p.rapidapi.com/v3',
             headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
+                'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
                 'x-rapidapi-key': 'ac0417c6e0dcfa236b146b9585892c9a'
             }
         };
@@ -465,6 +464,41 @@
                 .slice(0, 5);
         }
 
+        function findValueBets(matches, strategy) {
+            return matches
+                .filter(match => {
+                    if (!match.odds) return false;
+                    const valueRating = calculateValueRating(match);
+                    return valueRating >= strategy.valueThreshold;
+                })
+                .sort((a, b) => calculateValueRating(b) - calculateValueRating(a))
+                .slice(0, 10);
+        }
+
+        function detectTraps(matches) {
+            return matches.filter(match => {
+                if (!match.odds) return false;
+                const odds = match.odds.bookmakers?.[0]?.bets?.[0]?.values || [];
+                const suspiciousOdds = odds.some(odd => parseFloat(odd.odd) > 5);
+                const poorForm = match.form?.home < 30 || match.form?.away < 30;
+                const injuries = match.injuries?.total > 2;
+                return suspiciousOdds && (poorForm || injuries);
+            });
+        }
+
+        function calculateStatistics(matches) {
+            const totalMatches = matches.length;
+            const withOdds = matches.filter(m => m.odds).length;
+            const highValue = matches.filter(m => calculateValueRating(m) > 15).length;
+            
+            return {
+                totalMatches,
+                withOdds,
+                highValue,
+                averageOdds: calculateAverageOdds(matches)
+            };
+        }
+
         function calculateConfidence(match) {
             if (!match.odds) return 0;
             const factors = [
@@ -495,56 +529,110 @@
             displayStatistics(analysis.statistics);
         }
 
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        function displayPearls(pearls) {
+            const container = document.getElementById('pearlsResults');
+            if (!pearls.length) {
+                container.innerHTML = '<p>Nie znaleziono perełek spełniających kryteria</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Liga</th>
+                        <th>Typ</th>
+                        <th>Kurs</th>
+                        <th>Pewność</th>
+                        <th>Value</th>
+                    </tr>
+                    ${pearls.map(match => `
+                        <tr>
+                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
+                            <td>${match.league.name}</td>
+                            <td>${getBestBet(match)}</td>
+                            <td>${getBestOdds(match)}</td>
+                            <td>
+                                ${calculateConfidence(match).toFixed(1)}%
+                                <div class="confidence-meter">
+                                    <div class="confidence-level" style="width: ${calculateConfidence(match)}%"></div>
+                                </div>
+                            </td>
+                            <td><span class="pearl-indicator high">+${match.analysis.valueRating.toFixed(1)}%</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
         }
 
-        function showError(message) {
-            const error = document.getElementById('errorMessage');
-            error.textContent = message;
-            error.style.display = 'block';
-            setTimeout(() => {
-                error.style.display = 'none';
-            }, 5000);
+        function displayValueBets(valueBets) {
+            const container = document.getElementById('valueBettingResults');
+            if (!valueBets.length) {
+                container.innerHTML = '<p>Nie znaleziono wartościowych typów</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Liga</th>
+                        <th>Typ</th>
+                        <th>Kurs</th>
+                        <th>Value</th>
+                    </tr>
+                    ${valueBets.map(match => `
+                        <tr>
+                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
+                            <td>${match.league.name}</td>
+                            <td>${getBestBet(match)}</td>
+                            <td>${getBestOdds(match)}</td>
+                            <td><span class="pearl-indicator medium">+${calculateValueRating(match).toFixed(1)}%</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
         }
 
-        function refreshData() {
-            performAdvancedAnalysis();
+        function displayTraps(traps) {
+            const container = document.getElementById('trapsResults');
+            if (!traps.length) {
+                container.innerHTML = '<p>Nie wykryto podejrzanych kursów</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="stats-table">
+                    <tr>
+                        <th>Mecz</th>
+                        <th>Liga</th>
+                        <th>Powód</th>
+                        <th>Ryzyko</th>
+                    </tr>
+                    ${traps.map(match => `
+                        <tr>
+                            <td>${match.teams.home.name} vs ${match.teams.away.name}</td>
+                            <td>${match.league.name}</td>
+                            <td>${getTrapReason(match)}</td>
+                            <td><span class="pearl-indicator low">Wysokie</span></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
         }
 
-        // Symulowane funkcje pomocnicze
-        function calculateTeamForm(fixture, h2h) {
-            return {
-                home: Math.random() * 100,
-                away: Math.random() * 100
-            };
-        }
-
-        function analyzeMotivation(fixture) {
-            return {
-                home: Math.random() * 100,
-                away: Math.random() * 100
-            };
-        }
-
-        function assessRisk(fixture, odds, predictions) {
-            const riskScore = Math.random() * 100;
-            if (riskScore > 75) return 'low';
-            if (riskScore > 50) return 'medium';
-            return 'high';
-        }
-
-        function optimizeStrategy(history) {
-            return learningSystem.currentStrategy;
-        }
-
-        function loadLearningHistory() {
-            // Implementacja ładowania historii
-        }
-
-        function updateLearningHistory(analysis) {
-            // Implementacja aktualizacji historii
-        }
-    </script>
-</body>
-</html>
+        function displayStatistics(stats) {
+            const container = document.getElementById('statsResults');
+            container.innerHTML = `
+                <div class="stats-summary">
+                    <div class="stat-card">
+                        <h3>Przeanalizowane mecze</h3>
+                        <div class="stat-value">${stats.totalMatches}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Mecze z kursami</h3>
+                        <div class="stat-value">${stats.withOdds}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Znalezione value</h3>
+                        <div class="stat-value">${stats.highValue}
