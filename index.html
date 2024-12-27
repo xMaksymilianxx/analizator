@@ -391,29 +391,40 @@
         <div id="errorMessage" class="error-message"></div>
 
         
-<style>
-    .progress-bar {
-        width: 100%;
-        background-color: #e0e0e0;
-        border-radius: 5px;
-        overflow: hidden;
-        margin: 10px 0;
+<style id="dark-mode-styles" disabled>
+    body {
+        background-color: #121212;
+        color: #e0e0e0;
     }
-
-    .progress {
-        height: 10px;
-        background-color: var(--primary-color);
-        width: 0%;
-        transition: width 0.3s ease;
+    .card, .header, .control-panel, .analysis-card {
+        background-color: #1e1e1e;
+        color: #e0e0e0;
+        box-shadow: none;
+    }
+    .btn-primary {
+        background: var(--gradient-primary);
+        color: white;
+    }
+    .stats-table th, .stats-table td {
+        border-color: #333;
     }
 </style>
-<div class="progress-bar"><div class="progress" id="progressBar"></div></div>
+
+<div style="text-align: center; margin-bottom: 20px;">
+    <button onclick="toggleDarkMode()" class="btn btn-primary">
+        <i class="fas fa-adjust"></i> Przełącz motyw
+    </button>
+</div>
 
 <script>
-    function updateProgressBar(percent) {
-        const progressBar = document.getElementById('progressBar');
-        if (progressBar) {
-            progressBar.style.width = percent + '%';
+    function toggleDarkMode() {
+        const darkModeStyles = document.getElementById('dark-mode-styles');
+        if (darkModeStyles.disabled) {
+            darkModeStyles.disabled = false;
+            document.body.classList.add('dark-mode');
+        } else {
+            darkModeStyles.disabled = true;
+            document.body.classList.remove('dark-mode');
         }
     }
 </script>
@@ -492,11 +503,7 @@
 
         function updateLastRefreshTime() {
             const now = new Date();
-            if (document.getElementById('lastUpdate')) {
-       document.getElementById('lastUpdate').textContent =
-    } else {
-       console.error('Last update container not found.');
-    } 
+            document.getElementById('lastUpdate').textContent = 
                 `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
         }
 
@@ -933,37 +940,22 @@
             `;
         }
     
-function analyzeAdvancedMotivation(match) {
-    const factors = {
-        leaguePosition: calculateLeaguePosition(match),
-        recentForm: analyzeRecentForm(match),
-        headToHead: analyzeH2H(match),
-        keyPlayersAvailable: checkKeyPlayers(match),
-        upcomingMatches: analyzeSchedule(match),
-        matchImportance: calculateMatchImportance(match),
-    };
-    const motivationScore = Object.values(factors).reduce((acc, val) => acc + val, 0) / 6;
-    return { score: motivationScore, factors, level: getMotivationLevel(motivationScore) };
-}
+document.addEventListener('DOMContentLoaded', function() {
+    const findGemsButton = document.getElementById('findGemsButton');
+    if (findGemsButton) {
+        findGemsButton.addEventListener('click', function() {
+            findGems();
+        });
+    } else {
+        console.error('Przycisk "Znajdź perełki" nie został znaleziony.');
+    }
+});
 
-function calculateMatchImportance(match) {
-    // Example logic for importance
-    return match.isDerby ? 20 : 10;
-}
-
-function analyzeWeatherImpact(match) {
-    // Placeholder for weather impact analysis
-    return { impact: Math.random() * 100, condition: "Good" };
-}
-
-function analyzeInjuries(match) {
-    // Placeholder for injury analysis
-    return { risk: "Low", keyPlayersMissing: 0 };
-}
-
-function calculateValueBetting(match) {
-    // Advanced value betting calculations
-    return (match.odds - 1) * match.confidence / 100;
+function findGems() {
+    // Przykładowa logika dla analizy perełek dnia
+    alert('Rozpoczynam analizę perełek dnia...');
+    // Tutaj można dodać więcej kodu do wykonywania rzeczywistej analizy.
+    console.log('Analiza perełek dnia została rozpoczęta.');
 }
 
 </script>
