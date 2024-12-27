@@ -1,11 +1,9 @@
 [build]
-publish = "."
-command = "# komenda budowania (jeśli potrzebna)"
-
-[build.environment]
-NODE_VERSION = "16"
+  publish = "."
 
 [[headers]]
-for = "/*"
-[headers.values]
-Access-Control-Allow-Origin = "*"
+  for = "/*"
+    [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, x-rapidapi-key, x-rapidapi-host"
