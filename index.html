@@ -390,7 +390,35 @@
 
         <div id="errorMessage" class="error-message"></div>
 
-        <div id="analysisResults" class="analysis-section">
+        
+<style>
+    .progress-bar {
+        width: 100%;
+        background-color: #e0e0e0;
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+
+    .progress {
+        height: 10px;
+        background-color: var(--primary-color);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+</style>
+<div class="progress-bar"><div class="progress" id="progressBar"></div></div>
+
+<script>
+    function updateProgressBar(percent) {
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            progressBar.style.width = percent + '%';
+        }
+    }
+</script>
+
+<div id="analysisResults" class="analysis-section">
             <div class="analysis-card">
                 <h2><i class="fas fa-star"></i> Perełki dnia</h2>
                 <div id="pearlsResults"></div>
@@ -464,7 +492,11 @@
 
         function updateLastRefreshTime() {
             const now = new Date();
-            document.getElementById('lastUpdate').textContent = 
+            if (document.getElementById('lastUpdate')) {
+       document.getElementById('lastUpdate').textContent =
+    } else {
+       console.error('Last update container not found.');
+    } 
                 `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
         }
 
@@ -900,6 +932,40 @@
                 </table>
             `;
         }
-    </script>
+    
+function analyzeAdvancedMotivation(match) {
+    const factors = {
+        leaguePosition: calculateLeaguePosition(match),
+        recentForm: analyzeRecentForm(match),
+        headToHead: analyzeH2H(match),
+        keyPlayersAvailable: checkKeyPlayers(match),
+        upcomingMatches: analyzeSchedule(match),
+        matchImportance: calculateMatchImportance(match),
+    };
+    const motivationScore = Object.values(factors).reduce((acc, val) => acc + val, 0) / 6;
+    return { score: motivationScore, factors, level: getMotivationLevel(motivationScore) };
+}
+
+function calculateMatchImportance(match) {
+    // Example logic for importance
+    return match.isDerby ? 20 : 10;
+}
+
+function analyzeWeatherImpact(match) {
+    // Placeholder for weather impact analysis
+    return { impact: Math.random() * 100, condition: "Good" };
+}
+
+function analyzeInjuries(match) {
+    // Placeholder for injury analysis
+    return { risk: "Low", keyPlayersMissing: 0 };
+}
+
+function calculateValueBetting(match) {
+    // Advanced value betting calculations
+    return (match.odds - 1) * match.confidence / 100;
+}
+
+</script>
 </body>
 </html>
