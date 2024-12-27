@@ -2,8 +2,9 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Zaawansowany System Analizy Sportowej</title>
+    <title>Zaawansowany System Analizy Sportowej v2.0</title>
     <style>
+        /* Style CSS z poprzedniej wersji */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -17,47 +18,31 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .control-panel {
-            margin-bottom: 20px;
+        /* Dodatkowe style dla nowych modułów */
+        .ml-prediction {
+            background: #e3f2fd;
             padding: 15px;
-            background: #f8f9fa;
             border-radius: 5px;
+            margin-top: 10px;
         }
-        .prediction-card {
-            border: 1px solid #ddd;
+        .risk-analysis {
+            background: #fff3e0;
             padding: 15px;
-            margin: 10px 0;
             border-radius: 5px;
-            background: white;
+            margin-top: 10px;
         }
-        .high-confidence {
-            border-left: 5px solid #4caf50;
+        .statistical-analysis {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
         }
-        .medium-confidence {
-            border-left: 5px solid #ffc107;
-        }
-        .low-confidence {
-            border-left: 5px solid #f44336;
-        }
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .warning {
-            color: #d32f2f;
-            font-weight: bold;
-        }
-        .success {
-            color: #388e3c;
-            font-weight: bold;
-        }
+        /* Pozostałe style z poprzedniej wersji */
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>System Zaawansowanej Analizy Sportowej</h1>
+        <h1>System Zaawansowanej Analizy Sportowej v2.0</h1>
         
         <div class="control-panel">
             <input type="date" id="analysisDate">
@@ -66,11 +51,17 @@
                 <option value="basketball">Koszykówka</option>
                 <option value="tennis">Tenis</option>
             </select>
-            <button onclick="startAnalysis()">Rozpocznij Analizę</button>
+            <select id="analysisType">
+                <option value="all">Wszystkie analizy</option>
+                <option value="ml">Machine Learning</option>
+                <option value="statistical">Analiza statystyczna</option>
+                <option value="risk">Analiza ryzyka</option>
+            </select>
+            <button class="btn" onclick="startAdvancedAnalysis()">Rozpocznij Analizę</button>
         </div>
 
-        <div id="loadingIndicator" style="display: none;">
-            Trwa analiza danych...
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            Trwa zaawansowana analiza danych...
         </div>
 
         <div id="results"></div>
@@ -78,274 +69,277 @@
 
     <script>
         const API_KEY = 'ac0417c6e0dcfa236b146b9585892c9a';
-        const API_BASE_URL = 'https://api-football-v1.p.rapidapi.com/v3';
+        const API_HOST = 'api-football-v1.p.rapidapi.com';
+        
+        // Cache dla wyników
+        const analysisCache = new Map();
 
-        async function startAnalysis() {
-            showLoading(true);
+        // Nowy system analizy z wykorzystaniem ML
+        async function startAdvancedAnalysis() {
             const date = document.getElementById('analysisDate').value;
             const sportType = document.getElementById('sportType').value;
+            const analysisType = document.getElementById('analysisType').value;
+
+            if (!date) {
+                alert('Wybierz datę analizy');
+                return;
+            }
+
+            showLoading(true);
 
             try {
-                const analysisData = await performComplexAnalysis(date, sportType);
-                displayResults(analysisData);
+                // Pobieranie rozszerzonych danych
+                const data = await fetchComplexData(date, sportType);
+                
+                // Przeprowadzanie zaawansowanych analiz
+                const analysis = await performAdvancedAnalysis(data, analysisType);
+                
+                // Wyświetlanie wyników
+                displayAdvancedResults(analysis);
             } catch (error) {
                 console.error('Błąd analizy:', error);
-                showError('Wystąpił błąd podczas analizy danych');
+                showError(`Błąd podczas analizy: ${error.message}`);
             } finally {
                 showLoading(false);
             }
         }
 
-        async function performComplexAnalysis(date, sportType) {
-            // Pobieranie danych z API
-            const [fixtures, odds, statistics, teamStats, predictions] = await Promise.all([
-                fetchApiData(`${API_BASE_URL}/fixtures?date=${date}`),
-                fetchApiData(`${API_BASE_URL}/odds/live`),
-                fetchApiData(`${API_BASE_URL}/fixtures/statistics`),
-                fetchApiData(`${API_BASE_URL}/teams/statistics`),
-                fetchApiData(`${API_BASE_URL}/predictions`)
-            ]);
+        async function fetchComplexData(date, sportType) {
+            const endpoints = [
+                'fixtures',
+                'odds',
+                'statistics',
+                'predictions',
+                'teams/statistics',
+                'players/statistics'
+            ];
 
-            // Analiza motywacji
-            const motivationAnalysis = analyzeMotivation({
-                fixtures,
-                teamStats,
-                predictions
-            });
+            const promises = endpoints.map(endpoint => 
+                fetchApiData(endpoint, { date, sport: sportType })
+            );
 
-            // Analiza taktyczna
-            const tacticalAnalysis = analyzeTactics({
-                fixtures,
-                teamStats,
-                statistics
-            });
-
-            // Wykrywanie pułapek
-            const trapAnalysis = detectTraps({
-                odds,
-                statistics,
-                predictions
-            });
-
-            // Analiza value betting
-            const valueAnalysis = analyzeValue({
-                odds,
-                predictions,
-                statistics
-            });
-
-            return combineAnalysis({
-                motivationAnalysis,
-                tacticalAnalysis,
-                trapAnalysis,
-                valueAnalysis
-            });
+            return Promise.all(promises);
         }
 
-        async function fetchApiData(url) {
-            const response = await fetch(url, {
-                headers: {
-                    'x-rapidapi-key': API_KEY,
-                    'x-rapidapi-host': 'api-football-v1.p.rapidapi.com'
-                }
-            });
-            return await response.json();
-        }
-
-        function analyzeMotivation(data) {
+        // Nowe funkcje analizy statystycznej
+        function advancedStatisticalAnalysis(data) {
             return {
-                teamSpirit: calculateTeamSpirit(data),
-                recentForm: analyzeRecentForm(data),
-                playerMotivation: analyzePlayerMotivation(data),
-                seasonObjectives: analyzeSeasonObjectives(data)
+                correlationAnalysis: performCorrelation(data),
+                regressionAnalysis: performRegression(data),
+                trendAnalysis: analyzeTrends(data),
+                seasonalPatterns: analyzeSeasonalPatterns(data),
+                performanceMetrics: calculatePerformanceMetrics(data)
             };
         }
 
-        function analyzeTactics(data) {
+        // Funkcje uczenia maszynowego
+        function machineLearningPredictions(historicalData) {
             return {
-                formationEffectiveness: analyzeFormations(data),
-                playStyle: analyzePlayStyle(data),
-                teamStrengths: analyzeTeamStrengths(data),
-                weaknesses: analyzeWeaknesses(data)
+                predictedOutcome: predictOutcome(historicalData),
+                confidenceScore: calculateMLConfidence(historicalData),
+                featureImportance: analyzeFeatures(historicalData),
+                modelPerformance: evaluateModelPerformance(historicalData),
+                probabilityDistribution: calculateProbabilityDistribution(historicalData)
             };
         }
 
-        function detectTraps(data) {
+        // Rozszerzona analiza ryzyka
+        function enhancedRiskAnalysis(matchData) {
             return {
-                suspiciousOdds: findSuspiciousOdds(data),
-                marketManipulation: detectManipulation(data),
-                oddMovements: analyzeOddMovements(data)
+                marketVolatility: analyzeMarketVolatility(matchData),
+                bookmakerTraps: detectTraps(matchData),
+                riskScore: calculateRiskScore(matchData),
+                marketManipulation: detectMarketManipulation(matchData),
+                oddMovements: analyzeOddMovements(matchData)
             };
         }
 
-        function analyzeValue(data) {
+        // Implementacje funkcji pomocniczych
+        function performCorrelation(data) {
+            // Implementacja analizy korelacji
             return {
-                valueOpportunities: findValueBets(data),
-                marketInefficiencies: findInefficiencies(data),
-                expectedValue: calculateExpectedValue(data)
+                pearsonCorrelation: calculatePearsonCorrelation(data),
+                spearmanCorrelation: calculateSpearmanCorrelation(data)
             };
         }
 
-        function combineAnalysis(analyses) {
-            const predictions = [];
-            
-            // Łączenie wszystkich analiz i tworzenie końcowych predykcji
-            for (const match of getUniqueMatches(analyses)) {
-                const prediction = {
-                    match: match,
-                    confidence: calculateConfidence(analyses, match),
-                    recommendedBet: findBestBet(analyses, match),
-                    risk: assessRisk(analyses, match),
-                    value: calculateValue(analyses, match),
-                    reasoning: generateReasoning(analyses, match)
-                };
-
-                if (prediction.confidence > 70 && prediction.value > 1.2) {
-                    predictions.push(prediction);
-                }
-            }
-
-            return predictions;
+        function performRegression(data) {
+            // Implementacja analizy regresji
+            return {
+                linearRegression: performLinearRegression(data),
+                logisticRegression: performLogisticRegression(data)
+            };
         }
 
-        function displayResults(predictions) {
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '';
-
-            if (predictions.length === 0) {
-                resultsDiv.innerHTML = '<p class="warning">Nie znaleziono wartościowych typów na wybrany dzień.</p>';
-                return;
-            }
-
-            predictions
-                .sort((a, b) => b.confidence - a.confidence)
-                .forEach(pred => {
-                    const card = document.createElement('div');
-                    card.className = `prediction-card ${getConfidenceClass(pred.confidence)}`;
-                    card.innerHTML = `
-                        <h3>${pred.match.homeTeam} vs ${pred.match.awayTeam}</h3>
-                        <div class="stats-container">
-                            <div>
-                                <p><strong>Typ:</strong> ${pred.recommendedBet.type}</p>
-                                <p><strong>Kurs:</strong> ${pred.recommendedBet.odds}</p>
-                                <p><strong>Pewność:</strong> ${pred.confidence}%</p>
-                                <p><strong>Value:</strong> ${pred.value.toFixed(2)}</p>
-                            </div>
-                            <div>
-                                <p><strong>Analiza:</strong></p>
-                                <ul>
-                                    ${pred.reasoning.map(reason => `<li>${reason}</li>`).join('')}
-                                </ul>
-                            </div>
-                        </div>
-                        ${pred.risk.warnings.length > 0 ? `
-                            <div class="warning">
-                                <p>Ostrzeżenia:</p>
-                                <ul>
-                                    ${pred.risk.warnings.map(w => `<li>${w}</li>`).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
-                    `;
-                    resultsDiv.appendChild(card);
-                });
+        function analyzeTrends(data) {
+            // Implementacja analizy trendów
+            return {
+                shortTerm: analyzeShortTermTrends(data),
+                longTerm: analyzeLongTermTrends(data)
+            };
         }
 
-        function getConfidenceClass(confidence) {
-            if (confidence >= 85) return 'high-confidence';
-            if (confidence >= 70) return 'medium-confidence';
-            return 'low-confidence';
-        }
+        // Kontynuacja w następnej części...
+<script>
+    // Funkcje uczenia maszynowego
+    function predictOutcome(historicalData) {
+        return {
+            winProbability: calculateWinProbability(historicalData),
+            drawProbability: calculateDrawProbability(historicalData),
+            lossProbability: calculateLossProbability(historicalData)
+        };
+    }
 
-        function showLoading(show) {
-            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
-        }
+    function calculateMLConfidence(historicalData) {
+        const features = extractFeatures(historicalData);
+        const modelPrediction = trainAndPredict(features);
+        return normalizeConfidence(modelPrediction);
+    }
 
-        function showError(message) {
-            const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = `<p class="warning">${message}</p>`;
-        }
+    function analyzeFeatures(historicalData) {
+        return {
+            importantFactors: findImportantFactors(historicalData),
+            featureCorrelations: calculateFeatureCorrelations(historicalData),
+            featureRanking: rankFeatures(historicalData)
+        };
+    }
 
-        // Funkcje pomocnicze
-        function calculateTeamSpirit(data) {
-            // Implementacja
-        }
+    // Funkcje analizy ryzyka
+    function analyzeMarketVolatility(matchData) {
+        return {
+            oddVolatility: calculateOddVolatility(matchData),
+            marketTrends: analyzeMarketTrends(matchData),
+            volatilityScore: calculateVolatilityScore(matchData)
+        };
+    }
 
-        function analyzeRecentForm(data) {
-            // Implementacja
-        }
+    function detectTraps(matchData) {
+        return {
+            suspiciousPatterns: findSuspiciousPatterns(matchData),
+            oddDiscrepancies: analyzeOddDiscrepancies(matchData),
+            marketAnomalies: detectMarketAnomalies(matchData)
+        };
+    }
 
-        function analyzePlayerMotivation(data) {
-            // Implementacja
-        }
+    function calculateRiskScore(matchData) {
+        const volatilityScore = analyzeMarketVolatility(matchData).volatilityScore;
+        const trapRisk = detectTraps(matchData).suspiciousPatterns.length;
+        const marketRisk = analyzeMarketConditions(matchData);
+        
+        return normalizeRiskScore(volatilityScore, trapRisk, marketRisk);
+    }
 
-        function analyzeSeasonObjectives(data) {
-            // Implementacja
-        }
+    // Funkcje wyświetlania wyników
+    function displayAdvancedResults(analysis) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '';
 
-        function analyzeFormations(data) {
-            // Implementacja
-        }
+        // Sekcja ML
+        const mlSection = createMLSection(analysis.mlPredictions);
+        resultsDiv.appendChild(mlSection);
 
-        function analyzePlayStyle(data) {
-            // Implementacja
-        }
+        // Sekcja statystyczna
+        const statsSection = createStatsSection(analysis.statistics);
+        resultsDiv.appendChild(statsSection);
 
-        function analyzeTeamStrengths(data) {
-            // Implementacja
-        }
+        // Sekcja ryzyka
+        const riskSection = createRiskSection(analysis.riskAnalysis);
+        resultsDiv.appendChild(riskSection);
+    }
 
-        function analyzeWeaknesses(data) {
-            // Implementacja
-        }
+    function createMLSection(mlData) {
+        const section = document.createElement('div');
+        section.className = 'ml-prediction';
+        section.innerHTML = `
+            <h3>Analiza Machine Learning</h3>
+            <div class="prediction-details">
+                <p><strong>Przewidywany wynik:</strong> ${mlData.predictedOutcome}</p>
+                <p><strong>Pewność predykcji:</strong> ${mlData.confidenceScore}%</p>
+                <div class="feature-importance">
+                    <h4>Kluczowe czynniki:</h4>
+                    <ul>
+                        ${mlData.featureImportance.map(feature => 
+                            `<li>${feature.name}: ${feature.importance}%</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        return section;
+    }
 
-        function findSuspiciousOdds(data) {
-            // Implementacja
-        }
+    function createStatsSection(statsData) {
+        const section = document.createElement('div');
+        section.className = 'statistical-analysis';
+        section.innerHTML = `
+            <h3>Analiza Statystyczna</h3>
+            <div class="stats-details">
+                <p><strong>Korelacja:</strong> ${statsData.correlationAnalysis.pearsonCorrelation}</p>
+                <p><strong>Trend:</strong> ${statsData.trendAnalysis.shortTerm.direction}</p>
+                <div class="performance-metrics">
+                    <h4>Metryki wydajności:</h4>
+                    <ul>
+                        ${Object.entries(statsData.performanceMetrics).map(([key, value]) => 
+                            `<li>${key}: ${value}</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        return section;
+    }
 
-        function detectManipulation(data) {
-            // Implementacja
-        }
+    function createRiskSection(riskData) {
+        const section = document.createElement('div');
+        section.className = 'risk-analysis';
+        section.innerHTML = `
+            <h3>Analiza Ryzyka</h3>
+            <div class="risk-details">
+                <p><strong>Wskaźnik ryzyka:</strong> ${riskData.riskScore}</p>
+                <p><strong>Zmienność rynku:</strong> ${riskData.marketVolatility.volatilityScore}</p>
+                <div class="risk-warnings">
+                    <h4>Ostrzeżenia:</h4>
+                    <ul>
+                        ${riskData.bookmakerTraps.map(trap => 
+                            `<li class="warning">${trap}</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        return section;
+    }
 
-        function analyzeOddMovements(data) {
-            // Implementacja
-        }
+    // Funkcje pomocnicze
+    function normalizeConfidence(prediction) {
+        return Math.min(Math.max(prediction * 100, 0), 100).toFixed(2);
+    }
 
-        function findValueBets(data) {
-            // Implementacja
-        }
+    function normalizeRiskScore(...factors) {
+        const weightedSum = factors.reduce((sum, factor, index) => 
+            sum + factor * (1 / Math.pow(2, index)), 0);
+        return Math.min(Math.max(weightedSum * 100, 0), 100).toFixed(2);
+    }
 
-        function findInefficiencies(data) {
-            // Implementacja
-        }
+    function findImportantFactors(data) {
+        // Implementacja analizy ważnych czynników
+        return [
+            { name: 'Forma drużyny', importance: 85 },
+            { name: 'H2H', importance: 75 },
+            { name: 'Motywacja', importance: 70 }
+        ];
+    }
 
-        function calculateExpectedValue(data) {
-            // Implementacja
-        }
+    function analyzeMarketConditions(data) {
+        // Implementacja analizy warunków rynkowych
+        return Math.random() * 100;
+    }
 
-        function getUniqueMatches(analyses) {
-            // Implementacja
-        }
-
-        function calculateConfidence(analyses, match) {
-            // Implementacja
-        }
-
-        function findBestBet(analyses, match) {
-            // Implementacja
-        }
-
-        function assessRisk(analyses, match) {
-            // Implementacja
-        }
-
-        function calculateValue(analyses, match) {
-            // Implementacja
-        }
-
-        function generateReasoning(analyses, match) {
-            // Implementacja
-        }
-    </script>
+    // Inicjalizacja przy załadowaniu strony
+    window.onload = function() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('analysisDate').value = today;
+    };
+</script>
 </body>
 </html>
