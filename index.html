@@ -70,6 +70,7 @@
             font-size: 16px;
             font-weight: bold;
             transition: all 0.3s ease;
+            margin: 5px;
         }
 
         .btn-primary {
@@ -181,9 +182,25 @@
             font-weight: bold;
         }
 
-        .chart-container {
-            height: 300px;
-            margin: 20px 0;
+        .global-analysis {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            margin-top: 20px;
+            padding: 15px;
+        }
+
+        .auto-refresh-info {
+            font-size: 0.9em;
+            color: var(--secondary-color);
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .last-update {
+            font-size: 0.8em;
+            color: var(--secondary-color);
+            text-align: right;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -231,9 +248,19 @@
             </div>
         </div>
 
-        <button onclick="performCompleteAnalysis()" class="btn btn-primary">
-            🔍 Przeprowadź pełną analizę
-        </button>
+        <div class="button-group">
+            <button onclick="performCompleteAnalysis()" class="btn btn-primary">
+                🔍 Przeprowadź analizę wybranego sportu
+            </button>
+            <button onclick="analyzeAllSports()" class="btn btn-primary">
+                🌍 Analizuj wszystkie sporty
+            </button>
+        </div>
+
+        <div class="auto-refresh-info">
+            Automatyczne odświeżanie co 5 minut
+            <div class="last-update" id="lastUpdate"></div>
+        </div>
 
         <div id="loading" class="loading">
             <h3>⌛ Trwa zaawansowana analiza danych...</h3>
@@ -243,6 +270,8 @@
         <div id="errorMessage" class="error-message"></div>
 
         <div id="analysisResults" class="analysis-section">
+            <div class="global-analysis" id="globalAnalysisResults"></div>
+            
             <div class="analysis-card">
                 <h2>📊 Analiza Value Betting</h2>
                 <div id="valueBettingResults"></div>
@@ -277,13 +306,38 @@
     <script>
         const API_KEY = '631900acd2063f2fa684e2257dfa5588';
         const CACHE_DURATION = 300000; // 5 minut cache
+        const AUTO_REFRESH_INTERVAL = 300000; // 5 minut
         let cachedData = {};
+        let globalAnalysis = {
+            bestBets: [],
+            topOpportunities: []
+        };
         
         document.addEventListener('DOMContentLoaded', async () => {
             await loadSports();
             setDefaultDate();
             initializeCache();
+            await analyzeAllSports(); // Automatyczna analiza przy starcie
+            
+            // Automatyczne odświeżanie co 5 minut
+            setInterval(async () => {
+                await analyzeAllSports();
+                updateLastRefreshTime();
+            }, AUTO_REFRESH_INTERVAL);
         });
+
+        function setDefaultDate() {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('analysisDate').value = tomorrow.toISOString().split('T')[0];
+        }
+
+        function updateLastRefreshTime() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = 
+                `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
+        }
 
         function initializeCache() {
             setInterval(() => {
@@ -294,12 +348,6 @@
                     }
                 });
             }, CACHE_DURATION);
-        }
-
-        function setDefaultDate() {
-            const today = new Date();
-            today.setDate(today.getDate() + 1); // Następny dzień
-            document.getElementById('analysisDate').value = today.toISOString().split('T')[0];
         }
 
         async function loadSports() {
@@ -343,6 +391,123 @@
             return emojiMap[sportGroup] || '🎯';
         }
 
+        async function fetchMatchData(sportType) {
+            try {
+                const response = await fetch(
+                    `https://api.the-odds-api.com/v4/sports/${sportType}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h,spreads`
+                );
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                
+                // Filtruj wydarzenia po wybranej dacie
+                const selectedDate = document.getElementById('analysisDate').value;
+                const filteredData = data.filter(match => {
+                    const matchDate = new Date(match.commence_time).toISOString().split('T')[0];
+                    return matchDate === selectedDate;
+                });
+                
+                return filteredData;
+            } catch (error) {
+                console.error('Error fetching match data:', error);
+                throw error;
+            }
+        }
+
+        async function analyzeMatchData(matchData, options) {
+            const { leagueType, stake, riskLevel } = options;
+
+            // Analiza value betting
+            const valueBets = matchData.map(match => {
+                const markets = match.bookmakers?.[0]?.markets || [];
+                const h2hMarket = markets.find(m => m.key === 'h2h');
+                const homeOdds = h2hMarket?.outcomes?.find(o => o.name === match.home_team)?.price;
+                const awayOdds = h2hMarket?.outcomes?.find(o => o.name === match.away_team)?.price;
+
+                return {
+                    match: `${match.home_team} vs ${match.away_team}`,
+                    value: calculate_value_rating(homeOdds, awayOdds),
+                    recommendation: get_recommended_bet(homeOdds, awayOdds),
+                    confidence: calculate_confidence(homeOdds, awayOdds),
+                    risk: assess_risk(homeOdds, awayOdds)
+                };
+            }).filter(bet => bet.value > 0);
+
+            return {
+                valueBets,
+                statistics: {
+                    totalMatches: matchData.length,
+                    averageConfidence: valueBets.reduce((acc, bet) => acc + bet.confidence, 0) / valueBets.length || 0
+                }
+            };
+        }
+
+        function calculate_value_rating(home_odds, away_odds) {
+            if (!home_odds || !away_odds) return 0;
+            const implied_prob = 1/home_odds + 1/away_odds;
+            return (1/implied_prob - 1) * 100;
+        }
+
+        function get_recommended_bet(home_odds, away_odds) {
+            if (!home_odds || !away_odds) return 'Brak danych';
+            return home_odds > away_odds ? 'Typ: Home' : 'Typ: Away';
+        }
+
+        function calculate_confidence(home_odds, away_odds) {
+            if (!home_odds || !away_odds) return 0;
+            const odds_ratio = Math.min(home_odds, away_odds) / Math.max(home_odds, away_odds);
+            return Math.round((1 - odds_ratio) * 100);
+        }
+
+        function assess_risk(home_odds, away_odds) {
+            if (!home_odds || !away_odds) return 'Unknown';
+            const odds_ratio = Math.max(home_odds, away_odds) / Math.min(home_odds, away_odds);
+            if (odds_ratio > 3) return 'Very High';
+            if (odds_ratio > 2) return 'High';
+            if (odds_ratio > 1.5) return 'Medium';
+            return 'Low';
+        }
+        async function analyzeAllSports() {
+            showLoading(true);
+            clearError();
+            
+            try {
+                const response = await fetch(`https://api.the-odds-api.com/v4/sports/?apiKey=${API_KEY}`);
+                const sports = await response.json();
+                const activeSports = sports.filter(sport => sport.active);
+
+                let allAnalysis = [];
+                
+                const analysisPromises = activeSports.map(async sport => {
+                    try {
+                        const matchData = await fetchMatchData(sport.key);
+                        const analysis = await analyzeMatchData(matchData, {
+                            leagueType: 'all',
+                            stake: 100,
+                            riskLevel: 'medium'
+                        });
+                        return {
+                            sport: sport.title,
+                            sportKey: sport.key,
+                            analysis
+                        };
+                    } catch (error) {
+                        console.error(`Error analyzing ${sport.title}:`, error);
+                        return null;
+                    }
+                });
+
+                const results = await Promise.all(analysisPromises);
+                globalAnalysis = combineAndFilterBestBets(results.filter(Boolean));
+                displayGlobalAnalysis(globalAnalysis);
+                updateLastRefreshTime();
+            } catch (error) {
+                console.error('Error in global analysis:', error);
+                showError('Błąd podczas globalnej analizy: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
         async function performCompleteAnalysis() {
             const sportType = document.getElementById('sportType').value;
             const date = document.getElementById('analysisDate').value;
@@ -372,90 +537,6 @@
             }
         }
 
-        async function analyzeMatchData(matchData, options) {
-            const { leagueType, stake, riskLevel } = options;
-
-            // Analiza value betting
-            const valueBets = matchData.filter(match => match.analysis.valueRating > 5)
-                .map(match => ({
-                    match: `${match.home_team} vs ${match.away_team}`,
-                    value: match.analysis.valueRating.toFixed(2),
-                    recommendation: match.analysis.recommendedBet,
-                    confidence: match.analysis.confidence,
-                    risk: match.analysis.risk
-                }));
-
-            // Najlepsze typy
-            const bestBets = matchData.filter(match => match.analysis.confidence > 70)
-                .sort((a, b) => b.analysis.confidence - a.analysis.confidence)
-                .map(match => ({
-                    match: `${match.home_team} vs ${match.away_team}`,
-                    bet: match.analysis.recommendedBet,
-                    confidence: match.analysis.confidence,
-                    expectedValue: match.analysis.expectedValue.toFixed(2)
-                }));
-
-            // Analiza handicapów
-            const handicaps = matchData.filter(match => match.bookmakers?.[0]?.markets?.find(m => m.key === 'spreads'))
-                .map(match => {
-                    const spreadMarket = match.bookmakers[0].markets.find(m => m.key === 'spreads');
-                    return {
-                        match: `${match.home_team} vs ${match.away_team}`,
-                        handicap: spreadMarket.outcomes[0].point,
-                        odds: spreadMarket.outcomes[0].price,
-                        recommendation: match.analysis.recommendedBet,
-                        risk: match.analysis.risk
-                    };
-                });
-
-            // Analiza lig niszowych
-            const nicheLeagues = matchData.reduce((acc, match) => {
-                const league = match.sport_title;
-                if (!acc[league]) {
-                    acc[league] = {
-                        matches: 0,
-                        averageOdds: 0,
-                        totalValue: 0
-                    };
-                }
-                acc[league].matches++;
-                acc[league].averageOdds += match.bookmakers?.[0]?.markets?.[0]?.outcomes?.[0]?.price || 0;
-                acc[league].totalValue += match.analysis.valueRating;
-                return acc;
-            }, {});
-
-            // Statystyki
-            const statistics = {
-                totalMatches: matchData.length,
-                averageConfidence: matchData.reduce((acc, m) => acc + m.analysis.confidence, 0) / matchData.length,
-                totalValue: matchData.reduce((acc, m) => acc + m.analysis.valueRating, 0),
-                riskDistribution: matchData.reduce((acc, m) => {
-                    acc[m.analysis.risk] = (acc[m.analysis.risk] || 0) + 1;
-                    return acc;
-                }, {})
-            };
-
-            // Zarządzanie budżetem
-            const bankroll = {
-                recommendedStake: calculateRecommendedStake(stake, riskLevel),
-                maxExposure: stake * 0.1,
-                riskManagement: generateRiskManagement(stake, riskLevel)
-            };
-
-            return {
-                valueBets,
-                bestBets,
-                handicaps,
-                nicheLeagues: Object.entries(nicheLeagues).map(([league, data]) => ({
-                    name: league,
-                    matches: data.matches,
-                    averageOdds: (data.averageOdds / data.matches).toFixed(2),
-                    valueRating: (data.totalValue / data.matches).toFixed(2)
-                })),
-                statistics,
-                bankroll
-            };
-        }
         function validateInputs(sportType, date, stake) {
             if (!sportType || !date || !stake) {
                 showError('Proszę wypełnić wszystkie pola');
@@ -468,133 +549,112 @@
             return true;
         }
 
-        async function fetchMatchData(sportType) {
-            const cacheKey = `${sportType}_${Date.now()}`;
-            if (cachedData[cacheKey] && Date.now() - cachedData[cacheKey].timestamp < CACHE_DURATION) {
-                return cachedData[cacheKey].data;
-            }
+        function combineAndFilterBestBets(allSportsAnalysis) {
+            let combinedBets = [];
+            let topOpportunities = [];
 
-            const [oddsData, h2hData] = await Promise.all([
-                fetchOdds(sportType),
-                fetchH2HData(sportType)
-            ]);
+            allSportsAnalysis.forEach(sportAnalysis => {
+                if (!sportAnalysis || !sportAnalysis.analysis || !sportAnalysis.analysis.valueBets) return;
+                
+                const { sport, analysis } = sportAnalysis;
 
-            const enrichedData = enrichMatchData(oddsData, h2hData);
-            cachedData[cacheKey] = {
-                data: enrichedData,
-                timestamp: Date.now()
-            };
+                // Filtruj najlepsze zakłady z każdego sportu
+                const bestBets = analysis.valueBets
+                    .filter(bet => bet.confidence > 75 && bet.value > 10)
+                    .map(bet => ({
+                        ...bet,
+                        sport,
+                        rating: calculateBetRating(bet)
+                    }));
 
-            return enrichedData;
-        }
+                combinedBets.push(...bestBets);
 
-        async function fetchOdds(sport) {
-            const response = await fetch(
-                `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${API_KEY}&regions=eu&markets=h2h,spreads,totals`
-            );
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        }
+                // Znajdź najlepsze okazje value betting
+                const opportunities = analysis.valueBets
+                    .filter(bet => bet.value > 15)
+                    .map(bet => ({
+                        ...bet,
+                        sport,
+                        rating: calculateBetRating(bet)
+                    }));
 
-        async function fetchH2HData(sport) {
-            const response = await fetch(
-                `https://api.the-odds-api.com/v4/sports/${sport}/scores/?apiKey=${API_KEY}`
-            );
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return await response.json();
-        }
+                topOpportunities.push(...opportunities);
+            });
 
-        function enrichMatchData(oddsData, h2hData) {
-            return oddsData.map(match => ({
-                ...match,
-                h2h: h2hData.find(h2h => h2h.id === match.id) || {},
-                analysis: analyzeMatch(match)
-            }));
-        }
-
-        function analyzeMatch(match) {
-            const markets = match.bookmakers?.[0]?.markets || [];
-            const h2hMarket = markets.find(m => m.key === 'h2h');
-            const spreadMarket = markets.find(m => m.key === 'spreads');
-            const totalMarket = markets.find(m => m.key === 'totals');
-
-            const homeOdds = h2hMarket?.outcomes.find(o => o.name === match.home_team)?.price;
-            const awayOdds = h2hMarket?.outcomes.find(o => o.name === match.away_team)?.price;
+            // Sortuj według ratingu
+            combinedBets.sort((a, b) => b.rating - a.rating);
+            topOpportunities.sort((a, b) => b.value - a.value);
 
             return {
-                valueRating: calculateValueRating(homeOdds, awayOdds),
-                recommendedBet: getRecommendedBet(homeOdds, awayOdds, spreadMarket),
-                confidence: calculateConfidence(homeOdds, awayOdds, match),
-                risk: assessRisk(homeOdds, awayOdds, spreadMarket),
-                expectedValue: calculateExpectedValue(homeOdds, awayOdds)
+                bestBets: combinedBets.slice(0, 10), // Top 10 najlepszych zakładów
+                topOpportunities: topOpportunities.slice(0, 5) // Top 5 najlepszych okazji
             };
         }
 
-        function calculateValueRating(homeOdds, awayOdds) {
-            if (!homeOdds || !awayOdds) return 0;
-            const impliedProb = 1/homeOdds + 1/awayOdds;
-            return (1/impliedProb - 1) * 100;
+        function calculateBetRating(bet) {
+            const valueWeight = 0.4;
+            const confidenceWeight = 0.4;
+            const riskWeight = 0.2;
+
+            const riskScore = {
+                'Low': 1,
+                'Medium': 0.7,
+                'High': 0.4,
+                'Very High': 0.2,
+                'Unknown': 0.5
+            }[bet.risk];
+
+            return (
+                (bet.value * valueWeight) +
+                (bet.confidence * confidenceWeight) +
+                (riskScore * 100 * riskWeight)
+            );
         }
+        function displayGlobalAnalysis(globalAnalysis) {
+            const globalResults = document.getElementById('globalAnalysisResults');
+            globalResults.innerHTML = `
+                <h2>🌟 Najlepsze typy ze wszystkich sportów</h2>
+                <table class="stats-table">
+                    <tr>
+                        <th>Sport</th>
+                        <th>Mecz</th>
+                        <th>Typ</th>
+                        <th>Wartość</th>
+                        <th>Pewność</th>
+                        <th>Ryzyko</th>
+                        <th>Rating</th>
+                    </tr>
+                    ${globalAnalysis.bestBets.map(bet => `
+                        <tr>
+                            <td>${bet.sport}</td>
+                            <td>${bet.match}</td>
+                            <td class="recommendation-strong">${bet.recommendation}</td>
+                            <td class="value-positive">${bet.value.toFixed(2)}%</td>
+                            <td>${bet.confidence}%</td>
+                            <td><span class="risk-indicator risk-${bet.risk.toLowerCase()}">${bet.risk}</span></td>
+                            <td>${bet.rating.toFixed(1)}</td>
+                        </tr>
+                    `).join('')}
+                </table>
 
-        function getRecommendedBet(homeOdds, awayOdds, spreadMarket) {
-            if (!homeOdds || !awayOdds) return 'Brak danych';
-            
-            const homeValue = calculateValueRating(homeOdds, awayOdds);
-            const spread = spreadMarket?.outcomes[0]?.point || 0;
-
-            if (homeValue > 10) return `Mocny typ: Home (${homeOdds})`;
-            if (homeValue < -10) return `Mocny typ: Away (${awayOdds})`;
-            if (Math.abs(spread) > 5) return `Handicap ${spread}`;
-            
-            return 'Brak wyraźnej wartości';
-        }
-
-        function calculateConfidence(homeOdds, awayOdds, match) {
-            if (!homeOdds || !awayOdds) return 0;
-            const oddsRatio = Math.min(homeOdds, awayOdds) / Math.max(homeOdds, awayOdds);
-            const valueRating = calculateValueRating(homeOdds, awayOdds);
-            return Math.min(Math.round((1 - oddsRatio + valueRating/100) * 100), 100);
-        }
-
-        function assessRisk(homeOdds, awayOdds, spreadMarket) {
-            if (!homeOdds || !awayOdds) return 'Unknown';
-            
-            const oddsRatio = Math.max(homeOdds, awayOdds) / Math.min(homeOdds, awayOdds);
-            const spread = Math.abs(spreadMarket?.outcomes[0]?.point || 0);
-
-            if (oddsRatio > 3 || spread > 15) return 'Very High';
-            if (oddsRatio > 2 || spread > 10) return 'High';
-            if (oddsRatio > 1.5 || spread > 5) return 'Medium';
-            return 'Low';
-        }
-
-        function calculateExpectedValue(homeOdds, awayOdds) {
-            if (!homeOdds || !awayOdds) return 0;
-            const impliedProb = 1/homeOdds + 1/awayOdds;
-            return ((1/impliedProb) - 1) * 100;
-        }
-
-        function calculateRecommendedStake(stake, riskLevel) {
-            const riskMultiplier = {
-                low: 0.02,
-                medium: 0.05,
-                high: 0.1
-            };
-            return stake * riskMultiplier[riskLevel];
-        }
-
-        function generateRiskManagement(stake, riskLevel) {
-            const maxLoss = stake * {
-                low: 0.1,
-                medium: 0.2,
-                high: 0.3
-            }[riskLevel];
-
-            return {
-                maxLoss,
-                stopLoss: maxLoss * 0.8,
-                targetProfit: maxLoss * 2
-            };
+                <h3>🎯 Najlepsze okazje value betting</h3>
+                <table class="stats-table">
+                    <tr>
+                        <th>Sport</th>
+                        <th>Mecz</th>
+                        <th>Wartość</th>
+                        <th>Rekomendacja</th>
+                    </tr>
+                    ${globalAnalysis.topOpportunities.map(opp => `
+                        <tr>
+                            <td>${opp.sport}</td>
+                            <td>${opp.match}</td>
+                            <td class="value-positive">${opp.value.toFixed(2)}%</td>
+                            <td class="recommendation-strong">${opp.recommendation}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            `;
         }
 
         function displayCompleteAnalysis(analysis) {
@@ -614,75 +674,10 @@
                     ${analysis.valueBets.map(bet => `
                         <tr>
                             <td>${bet.match}</td>
-                            <td class="value-positive">${bet.value}%</td>
+                            <td class="value-positive">${bet.value.toFixed(2)}%</td>
                             <td class="recommendation-strong">${bet.recommendation}</td>
                             <td>${bet.confidence}%</td>
                             <td><span class="risk-indicator risk-${bet.risk.toLowerCase()}">${bet.risk}</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-
-            // Wyświetlanie najlepszych typów
-            const bestBetsResults = document.getElementById('bestBetsResults');
-            bestBetsResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Typ</th>
-                        <th>Pewność</th>
-                        <th>Oczekiwana wartość</th>
-                    </tr>
-                    ${analysis.bestBets.map(bet => `
-                        <tr>
-                            <td>${bet.match}</td>
-                            <td class="recommendation-strong">${bet.bet}</td>
-                            <td>${bet.confidence}%</td>
-                            <td class="value-positive">${bet.expectedValue}%</td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-
-            // Wyświetlanie handicapów
-            const handicapResults = document.getElementById('handicapResults');
-            handicapResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Mecz</th>
-                        <th>Handicap</th>
-                        <th>Kurs</th>
-                        <th>Rekomendacja</th>
-                        <th>Ryzyko</th>
-                    </tr>
-                    ${analysis.handicaps.map(h => `
-                        <tr>
-                            <td>${h.match}</td>
-                            <td>${h.handicap}</td>
-                            <td>${h.odds}</td>
-                            <td>${h.recommendation}</td>
-                            <td><span class="risk-indicator risk-${h.risk.toLowerCase()}">${h.risk}</span></td>
-                        </tr>
-                    `).join('')}
-                </table>
-            `;
-
-            // Wyświetlanie lig niszowych
-            const nicheResults = document.getElementById('nicheResults');
-            nicheResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Liga</th>
-                        <th>Liczba meczów</th>
-                        <th>Średni kurs</th>
-                        <th>Wartość</th>
-                    </tr>
-                    ${analysis.nicheLeagues.map(league => `
-                        <tr>
-                            <td>${league.name}</td>
-                            <td>${league.matches}</td>
-                            <td>${league.averageOdds}</td>
-                            <td class="value-positive">${league.valueRating}%</td>
                         </tr>
                     `).join('')}
                 </table>
@@ -703,37 +698,6 @@
                     <tr>
                         <td>Średnia pewność typów</td>
                         <td>${analysis.statistics.averageConfidence.toFixed(1)}%</td>
-                    </tr>
-                    <tr>
-                        <td>Całkowita wartość</td>
-                        <td class="value-positive">${analysis.statistics.totalValue.toFixed(2)}%</td>
-                    </tr>
-                </table>
-            `;
-
-            // Wyświetlanie zarządzania budżetem
-            const bankrollResults = document.getElementById('bankrollResults');
-            bankrollResults.innerHTML = `
-                <table class="stats-table">
-                    <tr>
-                        <th>Parametr</th>
-                        <th>Wartość</th>
-                    </tr>
-                    <tr>
-                        <td>Zalecana stawka na zakład</td>
-                        <td>${analysis.bankroll.recommendedStake.toFixed(2)} PLN</td>
-                    </tr>
-                    <tr>
-                        <td>Maksymalna ekspozycja</td>
-                        <td>${analysis.bankroll.maxExposure.toFixed(2)} PLN</td>
-                    </tr>
-                    <tr>
-                        <td>Stop loss</td>
-                        <td>${analysis.bankroll.riskManagement.stopLoss.toFixed(2)} PLN</td>
-                    </tr>
-                    <tr>
-                        <td>Cel zysku</td>
-                        <td class="value-positive">${analysis.bankroll.riskManagement.targetProfit.toFixed(2)} PLN</td>
                     </tr>
                 </table>
             `;
