@@ -4,59 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analiza Sportowa</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-        }
-        header {
-            background-color: #333;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-        }
-        main {
-            padding: 20px;
-        }
-        .form-container {
-            max-width: 600px;
-            margin: auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .form-container h2 {
-            text-align: center;
-        }
-        .form-container label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-container input,
-        .form-container select,
-        .form-container button {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        .form-container button {
-            background-color: #007bff;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .form-container button:hover {
-            background-color: #0056b3;
-        }
-        .results {
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css"> <!-- Podłączenie CSS -->
 </head>
 <body>
     <header>
@@ -80,82 +28,6 @@
         </div>
     </main>
 
-    <script>
-        const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
-        const apiUrl = 'https://api-football-v1.p.rapidapi.com/v3';
-
-        // Funkcja do pobierania lig
-        async function fetchLeagues() {
-            try {
-                const response = await fetch(`${apiUrl}/leagues`, {
-                    method: 'GET',
-                    headers: {
-                        'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-                        'x-rapidapi-key': apiKey
-                    }
-                });
-                const data = await response.json();
-                const leagueSelect = document.getElementById('league');
-                data.response.forEach(league => {
-                    const option = document.createElement('option');
-                    option.value = league.league.id;
-                    option.textContent = `${league.league.name} (${league.country.name})`;
-                    leagueSelect.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Błąd podczas pobierania lig:', error);
-                alert('Nie udało się załadować lig.');
-            }
-        }
-
-        // Funkcja do analizy danych
-        async function analyzeData() {
-            const date = document.getElementById('date').value;
-            const leagueId = document.getElementById('league').value;
-
-            if (!date || !leagueId) {
-                alert('Proszę wybrać datę i ligę.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${apiUrl}/fixtures?date=${date}&league=${leagueId}`, {
-                    method: 'GET',
-                    headers: {
-                        'x-rapidapi-host': 'api-football-v1.p.rapidapi.com',
-                        'x-rapidapi-key': apiKey
-                    }
-                });
-                const data = await response.json();
-                displayResults(data.response);
-                
-                // Efekt uczenia się na błędach (przykład)
-                localStorage.setItem('lastAnalysis', JSON.stringify(data.response));
-                
-                console.log('Analiza zakończona sukcesem.');
-                
-                // Możliwość dodania dodatkowych algorytmów analizy np. motywacji drużyn.
-                
-            } catch (error) {
-                console.error('Błąd podczas analizy:', error);
-                alert('Nie udało się przeprowadzić analizy.');
-                
-                // W przypadku błędów przywrócenie ostatniej poprawnej analizy.
-                const lastAnalysis = localStorage.getItem('lastAnalysis');
-                if (lastAnalysis) displayResults(JSON.parse(lastAnalysis));
-                
-                alert('Przywrócono ostatnią poprawną analizę.');
-                
-            }
-        }
-
-        // Funkcja do wyświetlania wyników
-        function displayResults(fixtures) {
-            const resultsDiv = document.getElementById('results');
-            
-             resultsDiv.innerHTML="";
-             
-             fixtures.forEach(fixture=>{
-               resultsDiv.innerHTML+=`<p>${fixture?.team_home?.name}</p>`;
-             })
-          }
+    <script src="script.js"></script> <!-- Podłączenie JavaScript -->
+</body>
+</html>
