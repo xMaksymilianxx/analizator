@@ -3,7 +3,7 @@ const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
 // Adres API
 const apiUrl = 'https://v3.football.api-sports.io';
 
-// Lista sportów do analizy
+// Lista sportów do analizy (rozszerz w razie potrzeby)
 const sports = ['football', 'basketball', 'tennis', 'hockey', 'baseball'];
 
 // Funkcja do pobierania danych dla wszystkich sportów
@@ -12,7 +12,8 @@ async function fetchAllSportsData(date) {
 
     for (const sport of sports) {
         try {
-            const response = await fetch(`${apiUrl}/fixtures?date=${date}&sport=${sport}`, {
+            console.log(`Pobieranie danych dla ${sport}...`);
+            const response = await fetch(`${apiUrl}/fixtures?date=${date}`, {
                 method: 'GET',
                 headers: {
                     'x-rapidapi-host': 'v3.football.api-sports.io',
@@ -27,7 +28,8 @@ async function fetchAllSportsData(date) {
             }
 
             const data = await response.json();
-            allSportsData[sport] = data.response;
+            console.log(`Dane dla ${sport}:`, data);
+            allSportsData[sport] = data.response || [];
         } catch (error) {
             console.error(`Błąd podczas analizy dla ${sport}:`, error);
             allSportsData[sport] = { error: `Wystąpił błąd podczas analizy dla ${sport}` };
@@ -77,8 +79,9 @@ async function analyzeAllSports() {
     }
 
     try {
+        // Pobranie danych dla wszystkich sportów
         const allSportsData = await fetchAllSportsData(date);
-        displayAllSportsResults(allSportsData);
+        displayAllSportsResults(allSportsData); // Wyświetlenie wyników
     } catch (error) {
         console.error('Błąd podczas analizy:', error);
         alert('Wystąpił problem podczas analizy danych.');
