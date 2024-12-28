@@ -3,95 +3,89 @@ const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
 // Adres API
 const apiUrl = 'https://v3.football.api-sports.io';
 
-// Funkcja do pobierania lig
-async function fetchLeagues() {
-    try {
-        const response = await fetch(`${apiUrl}/leagues`, {
-            method: 'GET',
-            headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
-                'x-rapidapi-key': apiKey
-            }
-        });
+// Lista sportów do analizy
+const sports = ['football', 'basketball', 'tennis', 'hockey', 'baseball'];
 
-        if (!response.ok) {
-            throw new Error(`Błąd podczas pobierania lig: ${response.status}`);
+// Funkcja do pobierania danych dla wszystkich sportów
+async function fetchAllSportsData(date) {
+    const allSportsData = {};
+
+    for (const sport of sports) {
+        try {
+            const response = await fetch(`${apiUrl}/fixtures?date=${date}&sport=${sport}`, {
+                method: 'GET',
+                headers: {
+                    'x-rapidapi-host': 'v3.football.api-sports.io',
+                    'x-rapidapi-key': apiKey
+                }
+            });
+
+            if (!response.ok) {
+                console.error(`Błąd podczas pobierania danych dla ${sport}: ${response.status}`);
+                allSportsData[sport] = { error: `Nie udało się pobrać danych dla ${sport}` };
+                continue;
+            }
+
+            const data = await response.json();
+            allSportsData[sport] = data.response;
+        } catch (error) {
+            console.error(`Błąd podczas analizy dla ${sport}:`, error);
+            allSportsData[sport] = { error: `Wystąpił błąd podczas analizy dla ${sport}` };
+        }
+    }
+
+    return allSportsData;
+}
+
+// Funkcja do wyświetlania wyników dla wszystkich sportów
+function displayAllSportsResults(sportsData) {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = ''; // Wyczyszczenie poprzednich wyników
+
+    for (const [sport, data] of Object.entries(sportsData)) {
+        const sportDiv = document.createElement('div');
+        sportDiv.innerHTML = `<h2>${sport.toUpperCase()}</h2>`;
+
+        if (data.error) {
+            sportDiv.innerHTML += `<p>${data.error}</p>`;
+        } else if (data.length === 0) {
+            sportDiv.innerHTML += `<p>Brak danych dla tego sportu.</p>`;
+        } else {
+            data.forEach(fixture => {
+                sportDiv.innerHTML += `
+                    <div>
+                        <h3>${fixture.teams?.home?.name || 'Nieznana drużyna'} vs ${fixture.teams?.away?.name || 'Nieznana drużyna'}</h3>
+                        <p>Data: ${new Date(fixture.fixture.date).toLocaleString()}</p>
+                        <p>Stadion: ${fixture.fixture.venue?.name || 'Nieznany'}</p>
+                        <hr>
+                    </div>
+                `;
+            });
         }
 
-        const data = await response.json();
-        const leagueSelect = document.getElementById('league');
-
-        // Dodanie lig do rozwijanego menu
-        data.response.forEach(league => {
-            const option = document.createElement('option');
-            option.value = league.league.id;
-            option.textContent = `${league.league.name} (${league.country.name})`;
-            leagueSelect.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Błąd podczas pobierania lig:', error);
-        alert('Nie udało się załadować lig. Sprawdź konsolę.');
+        resultsDiv.appendChild(sportDiv);
     }
 }
 
-// Funkcja do analizy danych
-async function analyzeData() {
+// Funkcja do analizy danych dla wybranej daty
+async function analyzeAllSports() {
     const date = document.getElementById('date').value; // Pobranie wybranej daty
-    const leagueId = document.getElementById('league').value; // Pobranie wybranej ligi
 
-    if (!date || !leagueId) {
-        alert('Proszę wybrać datę i ligę.');
+    if (!date) {
+        alert('Proszę wybrać datę.');
         return;
     }
 
     try {
-        // Wysłanie żądania do API-Football
-        const response = await fetch(`${apiUrl}/fixtures?date=${date}&league=${leagueId}`, {
-            method: 'GET',
-            headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
-                'x-rapidapi-key': apiKey
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Błąd podczas analizy: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Dane z API:', data);
-
-        if (data.response && data.response.length > 0) {
-            displayResults(data.response); // Wyświetlenie wyników
-        } else {
-            alert('Brak danych dla wybranej daty i ligi.');
-            document.getElementById('results').innerHTML = '<p>Brak wyników do wyświetlenia.</p>';
-        }
+        const allSportsData = await fetchAllSportsData(date);
+        displayAllSportsResults(allSportsData);
     } catch (error) {
         console.error('Błąd podczas analizy:', error);
-        alert(`Wystąpił problem podczas analizy: ${error.message}`);
+        alert('Wystąpił problem podczas analizy danych.');
     }
-}
-
-// Funkcja do wyświetlania wyników
-function displayResults(fixtures) {
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = ''; // Wyczyszczenie poprzednich wyników
-
-    fixtures.forEach(fixture => {
-        resultsDiv.innerHTML += `
-            <div>
-                <h3>${fixture.teams.home.name} vs ${fixture.teams.away.name}</h3>
-                <p>Data: ${new Date(fixture.fixture.date).toLocaleString()}</p>
-                <p>Stadion: ${fixture.fixture.venue.name || 'Nieznany'}</p>
-                <hr>
-            </div>
-        `;
-    });
 }
 
 // Inicjalizacja po załadowaniu strony
 document.addEventListener('DOMContentLoaded', () => {
-    fetchLeagues(); // Pobranie listy lig przy ładowaniu strony
-    document.getElementById("analyzeButton").addEventListener("click", analyzeData); // Obsługa kliknięcia przycisku "Przeprowadź analizę"
+    document.getElementById("analyzeButton").addEventListener("click", analyzeAllSports); // Obsługa kliknięcia przycisku "Przeprowadź analizę"
 });
