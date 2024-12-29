@@ -7,7 +7,7 @@ async function fetchFixtures(date) {
         const response = await fetch(`${apiUrl}/fixtures?date=${date}`, {
             method: 'GET',
             headers: {
-                'x-apisports-key': apiKey // Poprawny nagłówek dla API-Football
+                'x-apisports-key': apiKey // Nagłówek wymagany przez API-Football
             }
         });
 
@@ -19,6 +19,7 @@ async function fetchFixtures(date) {
         return data.response || [];
     } catch (error) {
         console.error('Błąd podczas pobierania danych o meczach:', error);
+        alert('Wystąpił problem z pobieraniem danych. Sprawdź konsolę przeglądarki.');
         return [];
     }
 }
@@ -30,11 +31,12 @@ async function analyzeMatch(match) {
 
     // Analiza danych
     let prediction = "Brak wystarczających danych";
-    if (match.teams.home && match.teams.away) {
+    if (match.fixture && match.fixture.date) {
         prediction = `
+            Data meczu: ${new Date(match.fixture.date).toLocaleString()}<br>
+            Status meczu: ${match.fixture.status.long || "Nieznany"}<br>
             Gospodarze: ${homeTeam}<br>
-            Goście: ${awayTeam}<br>
-            Status meczu: ${match.fixture.status.long || "Nieznany"}
+            Goście: ${awayTeam}
         `;
     }
 
@@ -49,13 +51,13 @@ async function analyzeMatch(match) {
 async function displayResults(date) {
     const matches = await fetchFixtures(date);
 
-    if (matches.length === 0) {
-        alert('Brak dostępnych meczów dla wybranej daty.');
-        return;
-    }
-
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = '';
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = '<p>Brak dostępnych meczów dla wybranej daty.</p>';
+        return;
+    }
 
     for (const match of matches) {
         resultsDiv.innerHTML += await analyzeMatch(match);
