@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "homeTeam": "Team A",
+    "awayTeam": "Team B",
+    "predictedWinner": "Team A"
+  },
+  {
+    "id": 2,
+    "homeTeam": "Team C",
+    "awayTeam": "Team D",
+    "predictedWinner": "Draw"
+  }
+]
