@@ -2,7 +2,7 @@ const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
 const apiUrl = 'https://v3.football.api-sports.io';
 
 // Funkcja do pobierania danych o meczach dla wybranego sportu i daty
-async function fetchMatches(date, sport) {
+async function fetchFixtures(date) {
     try {
         const response = await fetch(`${apiUrl}/fixtures?date=${date}`, {
             method: 'GET',
@@ -48,8 +48,8 @@ async function analyzeMatch(match) {
 }
 
 // Funkcja do wyświetlania wyników
-async function displayResults(date,sport) {
-const matches= await fetchMatches(date,sport)
+async function displayResults(date) {
+const matches= await fetchFixtures(date)
 
 const resultsDiv=document.getElementById("results")
 resultsDiv.innerHTML=""
@@ -61,13 +61,12 @@ resultsDiv.innerHTML+=await analyzeMatch(match)
 // Główna funkcja analizy
 async function analyze() {
 const date=document.getElementById("date").value
-const sport=document.getElementById("sport").value
 
-if(!date || !sport){
-alert("Proszę wybrać datę i sport")
+if(!date){
+alert("Proszę wybrać datę")
 return
 }
-displayResults(date,sport)
+displayResults(date)
 }
 
 // Inicjalizacja po załadowaniu strony
