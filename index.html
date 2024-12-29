@@ -3,31 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analiza Sportowa</title>
-    <link rel="stylesheet" href="style.css"> <!-- Podłączenie CSS -->
+    <title>Zaawansowana Analiza Sportowa</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Zaawansowana Analiza Sportowa</h1>
+        <h1>Zaawansowany System Analizy Sportowej</h1>
     </header>
     <main>
         <div class="form-container">
-            <h2>Wybierz datę i ligę</h2>
+            <h2>Wybierz datę</h2>
             <label for="date">Data:</label>
             <input type="date" id="date" required>
 
-            <label for="league">Liga:</label>
-            <select id="league">
-                <!-- Ligi będą załadowane dynamicznie -->
-                <option value="">Wybierz ligę...</option>
-            </select>
-
             <button id="analyzeButton">Przeprowadź analizę</button>
 
-            <div class="results" id="results"></div>
+            <div id="results"></div>
         </div>
     </main>
 
-    <script src="script.js"></script> <!-- Podłączenie JavaScript -->
+    <script src="script.js"></script>
 </body>
 </html>
