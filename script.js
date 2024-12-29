@@ -1,117 +1,113 @@
 const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
 const apiUrl = 'https://v3.football.api-sports.io';
 
-// Konfiguracja GitHub
-const githubToken = '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'; // Twój Personal Access Token
-const repoOwner = 'xMaksymilianxx'; // Twoja nazwa użytkownika GitHub
-const repoName = 'analizator'; // Nazwa Twojego repozytorium
-const branch = 'main'; // Gałąź, na której zapisywane będą pliki (domyślnie "main")
+// GitHub Configuration
+const githubToken = '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'; // Your Personal Access Token
+const repoOwner = 'xMaksymilianxx'; // Your GitHub username
+const repoName = 'analizator'; // Your repository name
+const branch = 'main'; // Branch name
 
-// Funkcja do pobierania danych o meczach dla wybranego dnia
+// Fetch fixtures for a specific date
 async function fetchFixtures(date) {
     try {
         const response = await fetch(`${apiUrl}/fixtures?date=${date}`, {
             method: 'GET',
             headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
-                'x-rapidapi-key': apiKey
+                'x-apisports-key': apiKey
             }
         });
 
         if (!response.ok) {
-            throw new Error(`Błąd podczas pobierania danych o meczach (${response.status}): ${response.statusText}`);
+            throw new Error(`Error fetching fixtures (${response.status}): ${response.statusText}`);
         }
 
         const data = await response.json();
         return data.response || [];
     } catch (error) {
-        console.error('Błąd podczas pobierania danych o meczach:', error);
+        console.error('Error fetching fixtures:', error);
         return [];
     }
 }
 
-// Funkcja do pobierania statystyk drużyny
+// Fetch team statistics
 async function fetchTeamStatistics(teamId, leagueId, season) {
     try {
         const response = await fetch(`${apiUrl}/teams/statistics?team=${teamId}&league=${leagueId}&season=${season}`, {
             method: 'GET',
             headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
-                'x-rapidapi-key': apiKey
+                'x-apisports-key': apiKey
             }
         });
 
         if (!response.ok) {
-            throw new Error(`Błąd podczas pobierania statystyk drużyny (${teamId}): ${response.status}`);
+            throw new Error(`Error fetching team statistics (${teamId}): ${response.status}`);
         }
 
         const data = await response.json();
         return data.response || {};
     } catch (error) {
-        console.error('Błąd podczas pobierania statystyk drużyny:', error);
+        console.error('Error fetching team statistics:', error);
         return {};
     }
 }
 
-// Funkcja do pobierania kursów bukmacherskich
+// Fetch odds for a fixture
 async function fetchOdds(fixtureId) {
     try {
         const response = await fetch(`${apiUrl}/odds?fixture=${fixtureId}`, {
             method: 'GET',
             headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
-                'x-rapidapi-key': apiKey
+                'x-apisports-key': apiKey
             }
         });
 
         if (!response.ok) {
-            throw new Error(`Błąd podczas pobierania kursów dla meczu (${fixtureId}): ${response.status}`);
+            throw new Error(`Error fetching odds for fixture (${fixtureId}): ${response.status}`);
         }
 
         const data = await response.json();
         return data.response || [];
     } catch (error) {
-        console.error('Błąd podczas pobierania kursów:', error);
+        console.error('Error fetching odds:', error);
         return [];
     }
 }
 
-// Funkcja do pobierania rywalizacji historycznych
+// Fetch head-to-head comparisons
 async function fetchHeadToHead(homeTeamId, awayTeamId) {
     try {
         const response = await fetch(`${apiUrl}/fixtures/headtohead?h2h=${homeTeamId}-${awayTeamId}`, {
             method: 'GET',
             headers: {
-                'x-rapidapi-host': 'v3.football.api-sports.io',
-                'x-rapidapi-key': apiKey
+                'x-apisports-key': apiKey
             }
         });
 
         if (!response.ok) {
-            throw new Error(`Błąd podczas pobierania rywalizacji historycznych (${homeTeamId} vs ${awayTeamId}): ${response.status}`);
+            throw new Error(`Error fetching head-to-head data (${homeTeamId} vs ${awayTeamId}): ${response.status}`);
         }
 
         const data = await response.json();
         return data.response || [];
     } catch (error) {
-        console.error('Błąd podczas pobierania rywalizacji historycznych:', error);
+        console.error('Error fetching head-to-head data:', error);
         return [];
     }
 }
 
-// Funkcja do analizy meczu
+// Analyze a single match
 async function analyzeMatch(match) {
-    const homeTeam = match.teams.home.name || 'Nieznana drużyna';
-    const awayTeam = match.teams.away.name || 'Nieznana drużyna';
+    const homeTeam = match.teams.home.name || 'Unknown Team';
+    const awayTeam = match.teams.away.name || 'Unknown Team';
 
-    // Pobierz dodatkowe dane
+    // Fetch additional data
     const homeStats = await fetchTeamStatistics(match.teams.home.id, match.league.id, match.league.season);
     const awayStats = await fetchTeamStatistics(match.teams.away.id, match.league.id, match.league.season);
     const odds = await fetchOdds(match.fixture.id);
     const headToHead = await fetchHeadToHead(match.teams.home.id, match.teams.away.id);
 
-    // Analiza danych
-    let prediction = "Brak wystarczających danych";
+    // Analyze data
+    let prediction = "Insufficient data";
     
     if (odds.length >= 3 && homeStats && awayStats) {
         const homeOdds = parseFloat(odds[0].odd);
@@ -119,43 +115,37 @@ async function analyzeMatch(match) {
         const awayOdds = parseFloat(odds[2].odd);
 
         prediction = homeOdds < awayOdds && homeOdds < drawOdds 
-            ? `Typ: Wygrana ${homeTeam}` 
+            ? `Prediction: Win ${homeTeam}` 
             : awayOdds < homeOdds && awayOdds < drawOdds 
-                ? `Typ: Wygrana ${awayTeam}` 
-                : `Typ: Remis`;
-        
-        prediction += `<br>Forma gospodarzy: ${homeStats.form || "Brak danych"}`;
-        prediction += `<br>Forma gości: ${awayStats.form || "Brak danych"}`;
+                ? `Prediction: Win ${awayTeam}` 
+                : `Prediction: Draw`;
+
+        prediction += `<br>Home Team Form: ${homeStats.form || "No Data"}`;
+        prediction += `<br>Away Team Form: ${awayStats.form || "No Data"}`;
         
         if (headToHead.length > 0) {
-            prediction += `<br>Ostatni wynik H2H: ${headToHead[0].teams.home.name} ${headToHead[0].goals.home} - ${headToHead[0].goals.away} ${headToHead[0].teams.away.name}`;
+            prediction += `<br>Last H2H Result: ${headToHead[0].teams.home.name} ${headToHead[0].goals.home} - ${headToHead[0].goals.away} ${headToHead[0].teams.away.name}`;
         }
     }
 
-    return {
-      homeTeam,
-      awayTeam,
-      prediction,
-      league: match.league.name,
-      date: match.fixture.date,
-    };
+    return { homeTeam, awayTeam, prediction };
 }
 
-// Funkcja do zapisywania wyników w pliku JSON i przesyłania na GitHub
+// Save results to JSON file and upload to GitHub
 async function saveAndUploadResults(results) {
     const fileContent = JSON.stringify(results, null, 2);
-    
-    // Zapisz wyniki lokalnie jako plik JSON
+
+    // Save locally as JSON file
     const blob = new Blob([fileContent], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `analiza_${new Date().toISOString().split("T")[0]}.json`;
+    link.download = `analysis_${new Date().toISOString().split("T")[0]}.json`;
     link.click();
 
-    // Prześlij wyniki na GitHub
+    // Upload to GitHub
     try {
-        const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/analiza_${new Date().toISOString().split("T")[0]}.json`;
-        
+        const url = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/analysis_${new Date().toISOString().split("T")[0]}.json`;
+
         const response = await fetch(url, {
             method: 'PUT',
             headers: {
@@ -163,28 +153,28 @@ async function saveAndUploadResults(results) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                message: `Dodano wyniki analizy dla ${new Date().toISOString()}`,
+                message: `Added analysis results for ${new Date().toISOString()}`,
                 content: btoa(unescape(encodeURIComponent(fileContent))),
                 branch
             })
         });
 
         if (response.ok) {
-            console.log('Wyniki zostały przesłane na GitHub.');
+            console.log('Results successfully uploaded to GitHub.');
         } else {
-            console.error('Błąd podczas przesyłania wyników na GitHub:', await response.text());
+            console.error('Error uploading results to GitHub:', await response.text());
         }
     } catch (error) {
-        console.error('Błąd podczas przesyłania wyników na GitHub:', error);
+        console.error('Error uploading results to GitHub:', error);
     }
 }
 
-// Funkcja do wyświetlania wyników i ich zapisywania
+// Display results and save them
 async function displayResults(date) {
     const matches = await fetchFixtures(date);
 
     if (matches.length === 0) {
-        alert('Brak dostępnych meczów dla wybranej daty.');
+        alert('No matches available for the selected date.');
         return;
     }
 
@@ -204,22 +194,22 @@ async function displayResults(date) {
       `;
     }
 
-    saveAndUploadResults(analysisResults); // Zapisz wyniki i prześlij je na GitHub
+    saveAndUploadResults(analysisResults); // Save and upload results to GitHub
 }
 
-// Główna funkcja analizy
+// Main function for analysis
 async function analyze() {
     const date = document.getElementById('date').value;
 
     if (!date) {
-        alert('Proszę wybrać datę.');
+        alert('Please select a date.');
         return;
     }
 
     displayResults(date);
 }
 
-// Inicjalizacja po załadowaniu strony
+// Initialize event listeners on page load
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("analyzeButton").addEventListener("click", analyze);
 });
