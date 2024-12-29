@@ -25,6 +25,7 @@ async function fetchAllSportsData(date) {
             }
 
             const data = await response.json();
+            console.log(`Dane dla ${sport}:`, data); // Logowanie odpowiedzi API
             allSportsData[sport] = data.response || [];
         } catch (error) {
             console.error(`Błąd podczas analizy dla ${sport}:`, error);
