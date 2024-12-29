@@ -36,20 +36,16 @@ async function fetchAllSportsData(date) {
 }
 
 // Funkcja do analizy meczu
-function analyzeMatch(match) {
+async function analyzeMatch(match) {
     const homeTeam = match.teams.home.name || 'Nieznana drużyna';
     const awayTeam = match.teams.away.name || 'Nieznana drużyna';
 
-    // Analiza formy drużyn
-    const homeForm = match.statistics?.home?.form || 'Brak danych';
-    const awayForm = match.statistics?.away?.form || 'Brak danych';
+    // Pobierz dodatkowe dane
+    const homeStats = await fetchTeamStatistics(match.teams.home.id, match.league.id, match.season);
+    const awayStats = await fetchTeamStatistics(match.teams.away.id, match.league.id, match.season);
+    const odds = await fetchOdds(match.fixture.id);
+    const headToHead = await fetchHeadToHead(match.teams.home.id, match.teams.away.id);
 
-    // Analiza rywalizacji historycznych i motywacji
-    const rivalry = analyzeRivalry(match);
-    const motivation = analyzeMotivation(match);
-
-    // Analiza kursów bukmacherskich
-    const odds = match.odds?.bookmakers?.[0]?.bets?.[0]?.values || [];
     let prediction = "Brak wystarczających danych";
 
     if (odds.length >= 3) {
@@ -62,45 +58,88 @@ function analyzeMatch(match) {
             : awayOdds < homeOdds && awayOdds < drawOdds 
                 ? `Typ: Wygrana ${awayTeam} (kurs ${awayOdds})` 
                 : `Typ: Remis (kurs ${drawOdds})`;
-
-        prediction += `<br>Potencjalne pułapki bukmacherskie: ${detectBettingTrap(homeOdds, awayOdds)}`;
     }
 
     return `
         <h3>${homeTeam} vs ${awayTeam}</h3>
-        <p>Forma gospodarzy: ${homeForm}</p>
-        <p>Forma gości: ${awayForm}</p>
-        <p>Rywalizacja historyczna: ${rivalry}</p>
-        <p>Motywacja drużyn: ${motivation}</p>
+        <p>Forma gospodarzy: ${homeStats?.form || 'Brak danych'}</p>
+        <p>Forma gości: ${awayStats?.form || 'Brak danych'}</p>
+        <p>Rywalizacja historyczna: ${
+            headToHead.length > 0 
+                ? `Ostatni mecz zakończył się wynikiem ${headToHead[0].score.fulltime.home} - ${headToHead[0].score.fulltime.away}` 
+                : "Brak danych"
+        }</p>
         <p>${prediction}</p>
         <hr>`;
 }
 
-// Funkcja do analizy rywalizacji historycznych
-function analyzeRivalry(match) {
-    // Przykład: Rywalizacja na podstawie poprzednich spotkań
-    if (match.headToHead && match.headToHead.length > 0) {
-        const lastMatch = match.headToHead[0];
-        return `Ostatni mecz zakończył się wynikiem ${lastMatch.score.fulltime.home} - ${lastMatch.score.fulltime.away}`;
+// Funkcja do pobierania statystyk drużyn
+async function fetchTeamStatistics(teamId, leagueId, season) {
+    try {
+        const response = await fetch(`${apiUrl}/teams/statistics?team=${teamId}&league=${leagueId}&season=${season}`, {
+            method: 'GET',
+            headers: {
+                'x-rapidapi-host': 'v3.football.api-sports.io',
+                'x-rapidapi-key': apiKey
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Błąd podczas pobierania statystyk drużyny (${teamId}): ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response || {};
+    } catch (error) {
+        console.error('Błąd podczas pobierania statystyk drużyny:', error);
+        return {};
     }
-    return "Brak danych o rywalizacji historycznej.";
 }
 
-// Funkcja do analizy motywacji drużyn
-function analyzeMotivation(match) {
-    // Przykład: Motywacja na podstawie stawki meczu
-    if (match.league.round.includes('Playoff') || match.league.round.includes('Final')) {
-        return "Wysoka motywacja (mecz o dużą stawkę)";
+// Funkcja do pobierania kursów bukmacherskich
+async function fetchOdds(fixtureId) {
+    try {
+        const response = await fetch(`${apiUrl}/odds?fixture=${fixtureId}`, {
+            method: 'GET',
+            headers: {
+                'x-rapidapi-host': 'v3.football.api-sports.io',
+                'x-rapidapi-key': apiKey
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Błąd podczas pobierania kursów dla meczu (${fixtureId}): ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response || [];
+    } catch (error) {
+        console.error('Błąd podczas pobierania kursów:', error);
+        return [];
     }
-    return "Standardowa motywacja.";
 }
 
-// Funkcja do wykrywania pułapek bukmacherskich
-function detectBettingTrap(homeOdds, awayOdds) {
-    if (homeOdds < 1.5 && awayOdds > 5.0) {
-        return "Wysokie ryzyko";
+// Funkcja do pobierania rywalizacji historycznych
+async function fetchHeadToHead(homeTeamId, awayTeamId) {
+    try {
+        const response = await fetch(`${apiUrl}/fixtures/headtohead?h2h=${homeTeamId}-${awayTeamId}`, {
+            method: 'GET',
+            headers: {
+                'x-rapidapi-host': 'v3.football.api-sports.io',
+                'x-rapidapi-key': apiKey
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Błąd podczas pobierania rywalizacji historycznych (${homeTeamId} vs ${awayTeamId}): ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response || [];
+    } catch (error) {
+        console.error('Błąd podczas pobierania rywalizacji historycznych:', error);
+        return [];
     }
-    return "Niskie ryzyko";
 }
 
 // Funkcja do wyświetlania wyników dla wszystkich sportów
@@ -115,8 +154,8 @@ function displayAllSportsResults(sportsData) {
         if (matches.length === 0) {
             sportDiv.innerHTML += `<p>Brak danych dla tego sportu.</p>`;
         } else {
-            matches.forEach(match => {
-                sportDiv.innerHTML += analyzeMatch(match);
+            matches.forEach(async match => {
+                sportDiv.innerHTML += await analyzeMatch(match);
             });
         }
 
@@ -140,8 +179,6 @@ async function analyzeAllSports() {
         // Wyświetlenie wyników
         displayAllSportsResults(allSportsData);
 
-        // Zapisanie wyników w pamięci lokalnej przeglądarki
-        localStorage.setItem('lastAnalysis', JSON.stringify(allSportsData));
     } catch (error) {
         console.error('Błąd podczas analizy:', error);
         alert('Wystąpił problem podczas analizy danych.');
