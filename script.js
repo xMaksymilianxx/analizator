@@ -1,10 +1,14 @@
 const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a'; // Twój klucz API
 const apiUrl = 'https://v3.football.api-sports.io';
 
-// Funkcja do pobierania danych o meczach dla wybranego dnia
-async function fetchFixtures(date) {
+// Funkcja do pobierania danych o meczach dla wybranego dnia i sportu
+async function fetchFixtures(date, sport) {
     try {
-        const response = await fetch(`${apiUrl}/fixtures?date=${date}`, {
+        const endpoint = sport === 'football' 
+            ? `${apiUrl}/fixtures?date=${date}` 
+            : `${apiUrl}/${sport}/fixtures?date=${date}`; // Obsługa innych sportów
+
+        const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
                 'x-apisports-key': apiKey // Nagłówek wymagany przez API-Football
@@ -12,13 +16,13 @@ async function fetchFixtures(date) {
         });
 
         if (!response.ok) {
-            throw new Error(`Błąd podczas pobierania danych o meczach (${response.status}): ${response.statusText}`);
+            throw new Error(`Błąd podczas pobierania danych (${response.status}): ${response.statusText}`);
         }
 
         const data = await response.json();
         return data.response || [];
     } catch (error) {
-        console.error('Błąd podczas pobierania danych o meczach:', error);
+        console.error('Błąd podczas pobierania danych:', error);
         alert('Wystąpił problem z pobieraniem danych. Sprawdź konsolę przeglądarki.');
         return [];
     }
@@ -26,8 +30,8 @@ async function fetchFixtures(date) {
 
 // Funkcja do analizy meczu
 async function analyzeMatch(match) {
-    const homeTeam = match.teams.home.name || 'Nieznana drużyna';
-    const awayTeam = match.teams.away.name || 'Nieznana drużyna';
+    const homeTeam = match.teams?.home?.name || 'Nieznana drużyna';
+    const awayTeam = match.teams?.away?.name || 'Nieznana drużyna';
 
     // Analiza danych
     let prediction = "Brak wystarczających danych";
@@ -48,8 +52,8 @@ async function analyzeMatch(match) {
 }
 
 // Funkcja do wyświetlania wyników
-async function displayResults(date) {
-    const matches = await fetchFixtures(date);
+async function displayResults(date, sport) {
+    const matches = await fetchFixtures(date, sport);
 
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = '';
@@ -67,13 +71,14 @@ async function displayResults(date) {
 // Główna funkcja analizy
 async function analyze() {
     const date = document.getElementById('date').value;
+    const sport = document.getElementById('sport').value;
 
-    if (!date) {
-        alert('Proszę wybrać datę.');
+    if (!date || !sport) {
+        alert('Proszę wybrać datę i sport.');
         return;
     }
 
-    displayResults(date);
+    displayResults(date, sport);
 }
 
 // Inicjalizacja po załadowaniu strony
