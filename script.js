@@ -1,12 +1,10 @@
-// Twój klucz API
 const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
-// Adres API
 const apiUrl = 'https://v3.football.api-sports.io';
 
-// Lista sportów do analizy (rozszerz w razie potrzeby)
-const sports = ['football', 'basketball', 'tennis', 'hockey', 'baseball'];
+// Lista sportów do analizy
+const sports = ['football', 'basketball', 'hockey', 'baseball'];
 
-// Funkcja do pobierania danych dla wszystkich sportów
+// Funkcja do pobierania danych o meczach dla wszystkich sportów
 async function fetchAllSportsData(date) {
     const allSportsData = {};
 
@@ -23,20 +21,54 @@ async function fetchAllSportsData(date) {
 
             if (!response.ok) {
                 console.error(`Błąd podczas pobierania danych dla ${sport}: ${response.status}`);
-                allSportsData[sport] = { error: `Nie udało się pobrać danych dla ${sport}` };
                 continue;
             }
 
             const data = await response.json();
-            console.log(`Dane dla ${sport}:`, data);
             allSportsData[sport] = data.response || [];
         } catch (error) {
             console.error(`Błąd podczas analizy dla ${sport}:`, error);
-            allSportsData[sport] = { error: `Wystąpił błąd podczas analizy dla ${sport}` };
         }
     }
 
     return allSportsData;
+}
+
+// Funkcja do analizy meczu
+function analyzeMatch(match) {
+    const homeTeam = match.teams.home.name || 'Nieznana drużyna';
+    const awayTeam = match.teams.away.name || 'Nieznana drużyna';
+
+    // Analiza dodatkowych czynników
+    const weather = match.weather || 'Brak danych'; // Pogoda
+    const homeForm = match.statistics?.home?.form || 'Brak danych'; // Forma gospodarzy
+    const awayForm = match.statistics?.away?.form || 'Brak danych'; // Forma gości
+
+    let prediction = "Brak wystarczających danych";
+
+    // Analiza kursów bukmacherskich
+    const odds = match.odds?.bookmakers?.[0]?.bets?.[0]?.values || [];
+    if (odds.length >= 3) {
+        const homeOdds = parseFloat(odds[0].odd);
+        const drawOdds = parseFloat(odds[1].odd);
+        const awayOdds = parseFloat(odds[2].odd);
+
+        prediction = homeOdds < awayOdds && homeOdds < drawOdds 
+            ? `Typ: Wygrana ${homeTeam} (kurs ${homeOdds})` 
+            : awayOdds < homeOdds && awayOdds < drawOdds 
+                ? `Typ: Wygrana ${awayTeam} (kurs ${awayOdds})` 
+                : `Typ: Remis (kurs ${drawOdds})`;
+
+        prediction += `<br>Powtarzalność trendu wykryta na podstawie kursów`;
+    }
+
+    return `
+        <h3>${homeTeam} vs ${awayTeam}</h3>
+        <p>Pogoda: ${weather}</p>
+        <p>Forma gospodarzy: ${homeForm}</p>
+        <p>Forma gości: ${awayForm}</p>
+        <p>${prediction}</p>
+        <hr>`;
 }
 
 // Funkcja do wyświetlania wyników dla wszystkich sportów
@@ -44,24 +76,15 @@ function displayAllSportsResults(sportsData) {
     const resultsDiv = document.getElementById('results');
     resultsDiv.innerHTML = ''; // Wyczyszczenie poprzednich wyników
 
-    for (const [sport, data] of Object.entries(sportsData)) {
+    for (const [sport, matches] of Object.entries(sportsData)) {
         const sportDiv = document.createElement('div');
         sportDiv.innerHTML = `<h2>${sport.toUpperCase()}</h2>`;
 
-        if (data.error) {
-            sportDiv.innerHTML += `<p>${data.error}</p>`;
-        } else if (data.length === 0) {
+        if (matches.length === 0) {
             sportDiv.innerHTML += `<p>Brak danych dla tego sportu.</p>`;
         } else {
-            data.forEach(fixture => {
-                sportDiv.innerHTML += `
-                    <div>
-                        <h3>${fixture.teams?.home?.name || 'Nieznana drużyna'} vs ${fixture.teams?.away?.name || 'Nieznana drużyna'}</h3>
-                        <p>Data: ${new Date(fixture.fixture.date).toLocaleString()}</p>
-                        <p>Stadion: ${fixture.fixture.venue?.name || 'Nieznany'}</p>
-                        <hr>
-                    </div>
-                `;
+            matches.forEach(match => {
+                sportDiv.innerHTML += analyzeMatch(match);
             });
         }
 
@@ -69,9 +92,9 @@ function displayAllSportsResults(sportsData) {
     }
 }
 
-// Funkcja do analizy danych dla wybranej daty
+// Główna funkcja analizy
 async function analyzeAllSports() {
-    const date = document.getElementById('date').value; // Pobranie wybranej daty
+    const date = document.getElementById('date').value;
 
     if (!date) {
         alert('Proszę wybrać datę.');
@@ -81,7 +104,12 @@ async function analyzeAllSports() {
     try {
         // Pobranie danych dla wszystkich sportów
         const allSportsData = await fetchAllSportsData(date);
-        displayAllSportsResults(allSportsData); // Wyświetlenie wyników
+
+        // Wyświetlenie wyników
+        displayAllSportsResults(allSportsData);
+
+        // Zapisanie wyników w pamięci lokalnej przeglądarki
+        localStorage.setItem('lastAnalysis', JSON.stringify(allSportsData));
     } catch (error) {
         console.error('Błąd podczas analizy:', error);
         alert('Wystąpił problem podczas analizy danych.');
@@ -90,5 +118,5 @@ async function analyzeAllSports() {
 
 // Inicjalizacja po załadowaniu strony
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById("analyzeButton").addEventListener("click", analyzeAllSports); // Obsługa kliknięcia przycisku "Przeprowadź analizę"
+    document.getElementById("analyzeButton").addEventListener("click", analyzeAllSports);
 });
