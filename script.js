@@ -1,10 +1,22 @@
 const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a'; // Twój klucz API
 const apiUrl = 'https://v3.football.api-sports.io';
 
+// Lista obsługiwanych sportów
+const sports = [
+    { key: 'football', name: 'Piłka nożna' },
+    { key: 'basketball', name: 'Koszykówka' },
+    { key: 'baseball', name: 'Baseball' },
+    { key: 'hockey', name: 'Hokej' },
+    { key: 'tennis', name: 'Tenis' },
+    { key: 'cricket', name: 'Krykiet' },
+    { key: 'rugby', name: 'Rugby' },
+    { key: 'volleyball', name: 'Siatkówka' }
+];
+
 // Funkcja do pobierania danych o meczach dla wybranego dnia i sportu
 async function fetchFixtures(date, sport) {
     try {
-        const endpoint = `${apiUrl}/fixtures?date=${date}&sport=${sport}`; // Dodano obsługę różnych sportów
+        const endpoint = `${apiUrl}/fixtures?date=${date}&sport=${sport}`;
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
@@ -65,6 +77,18 @@ async function displayResults(date, sport) {
     }
 }
 
+// Funkcja do dynamicznego generowania listy sportów
+function populateSportsDropdown() {
+    const sportSelect = document.getElementById('sport');
+    
+    sports.forEach(sport => {
+        const option = document.createElement('option');
+        option.value = sport.key;
+        option.textContent = sport.name;
+        sportSelect.appendChild(option);
+    });
+}
+
 // Główna funkcja analizy
 async function analyze() {
     const date = document.getElementById('date').value;
@@ -80,5 +104,6 @@ async function analyze() {
 
 // Inicjalizacja po załadowaniu strony
 document.addEventListener('DOMContentLoaded', () => {
+    populateSportsDropdown();
     document.getElementById("analyzeButton").addEventListener("click", analyze);
 });
