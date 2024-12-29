@@ -12,9 +12,17 @@
     </header>
     <main>
         <div class="form-container">
-            <h2>Wybierz datę</h2>
+            <h2>Wybierz datę i sport</h2>
             <label for="date">Data:</label>
             <input type="date" id="date" required>
+
+            <label for="sport">Sport:</label>
+            <select id="sport">
+                <option value="football">Piłka nożna</option>
+                <option value="basketball">Koszykówka</option>
+                <option value="hockey">Hokej</option>
+                <option value="baseball">Baseball</option>
+            </select>
 
             <button id="analyzeButton">Przeprowadź analizę</button>
 
