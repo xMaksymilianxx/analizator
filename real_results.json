@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "homeTeam": "Team A",
+    "awayTeam": "Team B",
+    "actualWinner": "Team A"
+  },
+  {
+    "id": 2,
+    "homeTeam": "Team C",
+    "awayTeam": "Team D",
+    "actualWinner": "Team D"
+  }
+]
