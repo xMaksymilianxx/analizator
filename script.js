@@ -40,15 +40,18 @@ function analyzeMatch(match) {
     const homeTeam = match.teams.home.name || 'Nieznana drużyna';
     const awayTeam = match.teams.away.name || 'Nieznana drużyna';
 
-    // Analiza dodatkowych czynników
-    const weather = match.weather || 'Brak danych'; // Pogoda
-    const homeForm = match.statistics?.home?.form || 'Brak danych'; // Forma gospodarzy
-    const awayForm = match.statistics?.away?.form || 'Brak danych'; // Forma gości
+    // Analiza formy drużyn
+    const homeForm = match.statistics?.home?.form || 'Brak danych';
+    const awayForm = match.statistics?.away?.form || 'Brak danych';
 
-    let prediction = "Brak wystarczających danych";
+    // Analiza rywalizacji historycznych i motywacji
+    const rivalry = analyzeRivalry(match);
+    const motivation = analyzeMotivation(match);
 
     // Analiza kursów bukmacherskich
     const odds = match.odds?.bookmakers?.[0]?.bets?.[0]?.values || [];
+    let prediction = "Brak wystarczających danych";
+
     if (odds.length >= 3) {
         const homeOdds = parseFloat(odds[0].odd);
         const drawOdds = parseFloat(odds[1].odd);
@@ -60,16 +63,44 @@ function analyzeMatch(match) {
                 ? `Typ: Wygrana ${awayTeam} (kurs ${awayOdds})` 
                 : `Typ: Remis (kurs ${drawOdds})`;
 
-        prediction += `<br>Powtarzalność trendu wykryta na podstawie kursów`;
+        prediction += `<br>Potencjalne pułapki bukmacherskie: ${detectBettingTrap(homeOdds, awayOdds)}`;
     }
 
     return `
         <h3>${homeTeam} vs ${awayTeam}</h3>
-        <p>Pogoda: ${weather}</p>
         <p>Forma gospodarzy: ${homeForm}</p>
         <p>Forma gości: ${awayForm}</p>
+        <p>Rywalizacja historyczna: ${rivalry}</p>
+        <p>Motywacja drużyn: ${motivation}</p>
         <p>${prediction}</p>
         <hr>`;
+}
+
+// Funkcja do analizy rywalizacji historycznych
+function analyzeRivalry(match) {
+    // Przykład: Rywalizacja na podstawie poprzednich spotkań
+    if (match.headToHead && match.headToHead.length > 0) {
+        const lastMatch = match.headToHead[0];
+        return `Ostatni mecz zakończył się wynikiem ${lastMatch.score.fulltime.home} - ${lastMatch.score.fulltime.away}`;
+    }
+    return "Brak danych o rywalizacji historycznej.";
+}
+
+// Funkcja do analizy motywacji drużyn
+function analyzeMotivation(match) {
+    // Przykład: Motywacja na podstawie stawki meczu
+    if (match.league.round.includes('Playoff') || match.league.round.includes('Final')) {
+        return "Wysoka motywacja (mecz o dużą stawkę)";
+    }
+    return "Standardowa motywacja.";
+}
+
+// Funkcja do wykrywania pułapek bukmacherskich
+function detectBettingTrap(homeOdds, awayOdds) {
+    if (homeOdds < 1.5 && awayOdds > 5.0) {
+        return "Wysokie ryzyko";
+    }
+    return "Niskie ryzyko";
 }
 
 // Funkcja do wyświetlania wyników dla wszystkich sportów
