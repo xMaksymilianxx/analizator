@@ -1,8 +1,8 @@
 const apiKey = 'ac0417c6e0dcfa236b146b9585892c9a';
 const apiUrl = 'https://v3.football.api-sports.io';
 
-// Funkcja do pobierania danych o meczach dla wybranej daty
-async function fetchMatches(date) {
+// Funkcja do pobierania danych o meczach dla wybranego sportu i daty
+async function fetchMatches(date, sport) {
     try {
         const response = await fetch(`${apiUrl}/fixtures?date=${date}`, {
             method: 'GET',
@@ -32,49 +32,45 @@ async function analyzeMatch(match) {
     // Analiza kursów bukmacherskich
     const odds = match.odds?.bookmakers?.[0]?.bets?.[0]?.values || [];
     
-    let prediction = "Brak wystarczających danych";
-    
-    if (odds.length >= 3) {
-        const homeOdds = parseFloat(odds[0].odd);
-        const drawOdds = parseFloat(odds[1].odd);
-        const awayOdds = parseFloat(odds[2].odd);
+   let prediction= "Brak wystarczających danych"
+   if(odds.length>=3){
+   const homeOdds=parseFloat(odds[0].odd)
+   const drawOdds=parseFloat(odds[1].odd)
+   const awayOdds=parseFloat(odds[2].odd)
+   
+   prediction=homeOdds<awayOdds && homeOdds<drawOdds ?`Typ Wygrana ${homeTeam}` :awayOdds<homeOdds && awayOdds<drawOdds ? `Typ wygrana ${awayTeam}`:`Typ Remis`
+   }
 
-        prediction = homeOdds < awayOdds && homeOdds < drawOdds 
-            ? `Typ: Wygrana ${homeTeam} (kurs ${homeOdds})` 
-            : awayOdds < homeOdds && awayOdds < drawOdds 
-                ? `Typ: Wygrana ${awayTeam} (kurs ${awayOdds})` 
-                : `Typ: Remis (kurs ${drawOdds})`;
-    }
-
-    return `
-        <h3>${homeTeam} vs ${awayTeam}</h3>
-        <p>${prediction}</p>
-        <hr>`;
+   return `
+   <h3>${homeTeam} vs ${awayTeam}</h3>
+   <p>${prediction}</p> 
+   `
 }
 
 // Funkcja do wyświetlania wyników
-async function displayResults(date) {
-    const matches = await fetchMatches(date);
-    
-   const resultsDiv= document.getElementById("results")
-   resultsDiv.innerHTML=""
-   matches.forEach(async match=>{
-     resultsDiv.innerHTML+= await analyzeMatch(match)
-   })
+async function displayResults(date,sport) {
+const matches= await fetchMatches(date,sport)
+
+const resultsDiv=document.getElementById("results")
+resultsDiv.innerHTML=""
+matches.forEach(async match=>{
+resultsDiv.innerHTML+=await analyzeMatch(match)
+})
 }
 
 // Główna funkcja analizy
 async function analyze() {
-   const date=document.getElementById("date").value
+const date=document.getElementById("date").value
+const sport=document.getElementById("sport").value
 
-if(!date){
-alert("Proszę wybrać datę analizy")
+if(!date || !sport){
+alert("Proszę wybrać datę i sport")
 return
 }
-displayResults(date)
+displayResults(date,sport)
 }
 
 // Inicjalizacja po załadowaniu strony
-document.addEventListener('DOMContentLoaded', () => {
-   document.getElementById("analyzeButton").addEventListener("click",analyze)
-});
+document.addEventListener("DOMContentLoaded",()=>{
+document.getElementById("analyzeButton").addEventListener("click",analyze)
+})
