@@ -4,10 +4,7 @@ const apiUrl = 'https://v3.football.api-sports.io';
 // Funkcja do pobierania danych o meczach dla wybranego dnia i sportu
 async function fetchFixtures(date, sport) {
     try {
-        const endpoint = sport === 'football' 
-            ? `${apiUrl}/fixtures?date=${date}` 
-            : `${apiUrl}/${sport}/fixtures?date=${date}`; // Obsługa innych sportów
-
+        const endpoint = `${apiUrl}/fixtures?date=${date}&sport=${sport}`; // Dodano obsługę różnych sportów
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {
@@ -59,7 +56,7 @@ async function displayResults(date, sport) {
     resultsDiv.innerHTML = '';
 
     if (matches.length === 0) {
-        resultsDiv.innerHTML = '<p>Brak dostępnych meczów dla wybranej daty.</p>';
+        resultsDiv.innerHTML = '<p>Brak dostępnych meczów dla wybranej daty i sportu.</p>';
         return;
     }
 
