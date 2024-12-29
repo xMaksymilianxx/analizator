@@ -35,7 +35,6 @@ main {
 }
 
 .form-container input,
-.form-container select,
 .form-container button {
     width: 100%;
     padding: 10px;
